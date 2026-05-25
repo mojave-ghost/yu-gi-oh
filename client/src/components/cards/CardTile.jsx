@@ -25,13 +25,15 @@ export default function CardTile({ card }) {
     >
       <div style={{ height: '4px', background: stripeColor, flexShrink: 0 }} />
 
-      <img
-        src={`https://images.ygoprodeck.com/images/cards_small/${card.id}.jpg`}
-        alt={card.name}
-        style={{ width: '100%', display: 'block', aspectRatio: '0.72', objectFit: 'cover' }}
-        loading="lazy"
-        decoding="async"
-      />
+      {card.card_images?.[0]?.image_url_small && (
+        <img
+          src={card.card_images[0].image_url_small}
+          alt={card.name}
+          style={{ width: '100%', display: 'block', aspectRatio: '0.72', objectFit: 'cover' }}
+          loading="lazy"
+          decoding="async"
+        />
+      )}
 
       <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <p style={{

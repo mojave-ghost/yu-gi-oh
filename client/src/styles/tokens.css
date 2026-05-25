@@ -84,3 +84,8 @@
   --card-ritual-light: #C8E0F5;
   --card-ritual-text: #0A2A50;
 }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

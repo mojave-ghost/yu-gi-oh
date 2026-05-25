@@ -1,0 +1,22 @@
+const BASE = '/api'
+
+export async function fetchCards({ query, type, attribute, levelMin, levelMax, sort, page }) {
+  const params = new URLSearchParams()
+  if (query)          params.set('q',         query)
+  if (type)           params.set('type',       type)
+  if (attribute)      params.set('attribute',  attribute)
+  if (levelMin > 1)   params.set('levelMin',   levelMin)
+  if (levelMax < 12)  params.set('levelMax',   levelMax)
+  if (sort)           params.set('sort',        sort)
+  if (page)           params.set('page',        page)
+
+  const res = await fetch(`${BASE}/cards?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch cards')
+  return res.json()
+}
+
+export async function fetchCardById(id) {
+  const res = await fetch(`${BASE}/cards/${id}`)
+  if (!res.ok) throw new Error('Card not found')
+  return res.json()
+}

@@ -1,27 +1,37 @@
-const TYPE_KEY_MAP = {
-  'normal monster': 'normal',
-  'effect monster': 'effect',
-  'spell card': 'spell',
-  'trap card': 'trap',
-  'fusion monster': 'fusion',
-  'synchro monster': 'synchro',
-  'xyz monster': 'xyz',
-  'link monster': 'link',
-  'ritual monster': 'ritual',
-};
+const LABEL = {
+  spell:   'Spell',
+  trap:    'Trap',
+  fusion:  'Fusion',
+  synchro: 'Synchro',
+  xyz:     'Xyz',
+  link:    'Link',
+  ritual:  'Ritual',
+  normal:  'Normal',
+  effect:  'Effect',
+}
 
 function resolveKey(type) {
-  return TYPE_KEY_MAP[type?.toLowerCase()] ?? 'normal';
+  const t = type?.toLowerCase() ?? ''
+  if (t.includes('spell'))   return 'spell'
+  if (t.includes('trap'))    return 'trap'
+  if (t.includes('fusion'))  return 'fusion'
+  if (t.includes('synchro')) return 'synchro'
+  if (t.includes('xyz'))     return 'xyz'
+  if (t.includes('link'))    return 'link'
+  if (t.includes('ritual'))  return 'ritual'
+  if (t.includes('normal'))  return 'normal'
+  return 'effect'
 }
 
 export function getTypeStripeColor(type) {
-  return `var(--card-${resolveKey(type)}-bg)`;
+  return `var(--card-${resolveKey(type)}-bg)`
 }
 
 export function getTypeBadgeStyles(type) {
-  const key = resolveKey(type);
+  const key = resolveKey(type)
   return {
-    backgroundColor: `var(--card-${key}-light)`,
+    bg:    `var(--card-${key}-light)`,
     color: `var(--card-${key}-text)`,
-  };
+    label: LABEL[key],
+  }
 }

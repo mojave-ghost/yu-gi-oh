@@ -16,7 +16,6 @@ router.get('/', async (req, res) => {
     params.set('misc', 'yes')
     params.set('tcgplayer_data', 'true')
     if (q)         params.set('fname',     q)
-    if (type)      params.set('type',      type)
     if (attribute) params.set('attribute', attribute)
     if (levelMin && Number(levelMin) > 1) {
       params.set('level', `${levelMin},lte,${levelMax ?? 12}`)
@@ -31,6 +30,11 @@ router.get('/', async (req, res) => {
       const json = await upstream.json()
       allCards = json.data || []
       cache.set(cacheKey, allCards)
+    }
+
+    if (type) {
+      const key = resolveTypeKey(type)
+      allCards = allCards.filter(card => resolveTypeKey(card.type) === key)
     }
 
     allCards = sortCards(allCards, sort)
@@ -79,6 +83,19 @@ router.get('/:id', async (req, res) => {
     res.status(502).json({ error: err.message })
   }
 })
+
+function resolveTypeKey(type) {
+  const t = type?.toLowerCase() ?? ''
+  if (t.includes('spell'))   return 'spell'
+  if (t.includes('trap'))    return 'trap'
+  if (t.includes('fusion'))  return 'fusion'
+  if (t.includes('synchro')) return 'synchro'
+  if (t.includes('xyz'))     return 'xyz'
+  if (t.includes('link'))    return 'link'
+  if (t.includes('ritual'))  return 'ritual'
+  if (t.includes('normal'))  return 'normal'
+  return 'effect'
+}
 
 function sortCards(cards, sort) {
   return [...cards].sort((a, b) => {

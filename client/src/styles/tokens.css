@@ -83,6 +83,10 @@
   --card-ritual-bg: #4A90C8;
   --card-ritual-light: #C8E0F5;
   --card-ritual-text: #0A2A50;
+
+  /* Card type tokens — rare (rarity badge only, no card-type stripe) */
+  --card-rare-bg:   #C8C8C8;
+  --card-rare-text: #2e2e2e;
 }
 
 @keyframes pulse {

@@ -55,7 +55,9 @@ router.get('/random', async (req, res) => {
   try {
     const upstream = await fetch(`${YGOPRO_BASE}/randomcard.php`)
     if (!upstream.ok) return res.status(502).json({ error: 'Upstream error' })
-    const card = await upstream.json()
+    const json = await upstream.json()
+    const card = json.data?.[0]
+    if (!card) return res.status(502).json({ error: 'No card returned' })
     res.json(card)
   } catch (err) {
     res.status(502).json({ error: err.message })

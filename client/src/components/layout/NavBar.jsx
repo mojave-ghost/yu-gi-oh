@@ -1,18 +1,22 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import SearchBar from '../search/SearchBar'
 
 export default function NavBar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
 
   function handleSearch(value) {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev)
-      if (value) next.set('q', value)
-      else next.delete('q')
-      next.set('page', '1')
-      return next
-    })
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set('q', value)
+    else next.delete('q')
+    next.set('page', '1')
+
+    if (location.pathname !== '/browse') {
+      navigate('/browse?' + next.toString())
+    } else {
+      setSearchParams(next)
+    }
   }
 
   async function handleRandom() {
@@ -41,7 +45,7 @@ export default function NavBar() {
         whiteSpace: 'nowrap',
         flexShrink: 0,
       }}>
-        YGO Database
+        Yu-Gi-Oh DB
       </Link>
 
       <div style={{ flex: 1, maxWidth: '480px' }}>

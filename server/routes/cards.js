@@ -73,11 +73,20 @@ router.get('/:id', async (req, res) => {
 
     if (cached) return res.json(cached)
 
-    const upstream = await fetch(`${YGOPRO_BASE}/cardinfo.php?id=${id}&tcgplayer_data=true`)
+    const upstream = await fetch(`${YGOPRO_BASE}/cardinfo.php?id=${id}&tcgplayer_data=true&misc=yes`)
     if (!upstream.ok) return res.status(404).json({ error: 'Card not found' })
     const json = await upstream.json()
     const card = json.data?.[0]
     if (!card) return res.status(404).json({ error: 'Card not found' })
+
+    try {
+      const nameUpstream = await fetch(`${YGOPRO_BASE}/cardinfo.php?name=${encodeURIComponent(card.name)}&misc=yes`)
+      if (nameUpstream.ok) {
+        const nameJson = await nameUpstream.json()
+        const fullCard = nameJson.data?.[0]
+        if (fullCard?.card_images?.length) card.card_images = fullCard.card_images
+      }
+    } catch (_) {}
 
     cache.set(cacheKey, card)
     res.json(card)

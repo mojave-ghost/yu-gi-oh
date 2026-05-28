@@ -3,28 +3,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useDebouncedCallback } from 'use-debounce'
 import { useSets } from '../hooks/useSets'
 
-const TYPE_ORDER = [
-  'Core Set',
-  'Booster Pack',
-  'Starter Deck',
-  'Structure Deck',
-  'Special Edition',
-  'Tin',
-  'Promo',
-  'Other',
-]
-
-function normalizeType(raw) {
-  if (!raw) return 'Other'
-  const lower = raw.toLowerCase()
-  if (lower.includes('core'))      return 'Core Set'
-  if (lower.includes('booster'))   return 'Booster Pack'
-  if (lower.includes('starter'))   return 'Starter Deck'
-  if (lower.includes('structure')) return 'Structure Deck'
-  if (lower.includes('special'))   return 'Special Edition'
-  if (lower.includes('tin'))       return 'Tin'
-  if (lower.includes('promo'))     return 'Promo'
-  return 'Other'
+function sortSets(sets, key) {
+  const sorted = [...sets]
+  if (key === 'name')   return sorted.sort((a, b) => a.set_name.localeCompare(b.set_name))
+  if (key === 'newest') return sorted.sort((a, b) => (b.tcg_date || '').localeCompare(a.tcg_date || ''))
+  if (key === 'oldest') return sorted.sort((a, b) => (a.tcg_date || '').localeCompare(b.tcg_date || ''))
+  if (key === 'code')   return sorted.sort((a, b) => a.set_code.localeCompare(b.set_code))
+  if (key === 'count')  return sorted.sort((a, b) => b.num_of_cards - a.num_of_cards)
+  return sorted
 }
 
 export default function SetsPage() {
@@ -33,6 +19,7 @@ export default function SetsPage() {
   const { data: sets, isLoading, isError } = useSets()
 
   const setq = searchParams.get('setq') || ''
+  const setsort = searchParams.get('setsort') || 'name'
   const [localSetQ, setLocalSetQ] = useState(setq)
   useEffect(() => { setLocalSetQ(setq) }, [setq])
 
@@ -66,11 +53,7 @@ export default function SetsPage() {
     ? sets.filter(s => s.set_name.toLowerCase().includes(setq.toLowerCase()))
     : sets
 
-  const grouped = new Map(TYPE_ORDER.map(label => [label, []]))
-  for (const set of filtered) {
-    const label = normalizeType(set.set_type)
-    grouped.get(label).push(set)
-  }
+  const filteredAndSorted = sortSets(filtered, setsort)
 
   return (
     <main style={{ padding: 'var(--section-pad)', maxWidth: 860, margin: '0 auto' }}>
@@ -84,27 +67,55 @@ export default function SetsPage() {
         Sets
       </h1>
 
-      <input
-        type="search"
-        placeholder="Filter sets…"
-        value={localSetQ}
-        onChange={handleSearch}
-        aria-label="Filter sets"
-        style={{
-          width: '100%',
-          height: '40px',
-          padding: '0 12px',
-          fontFamily: 'var(--font-body)',
-          fontSize: 13,
-          background: 'var(--bg-surface)',
-          border: '0.5px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-          color: 'var(--text-primary)',
-          outline: 'none',
-          marginBottom: 24,
-          boxSizing: 'border-box',
-        }}
-      />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <input
+          type="search"
+          placeholder="Filter sets…"
+          value={localSetQ}
+          onChange={handleSearch}
+          aria-label="Filter sets"
+          style={{
+            flex: 1,
+            height: '40px',
+            padding: '0 12px',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            background: 'var(--bg-surface)',
+            border: '0.5px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--text-primary)',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+        <select
+          value={setsort}
+          onChange={e => {
+            setSearchParams(prev => {
+              const next = new URLSearchParams(prev)
+              next.set('setsort', e.target.value)
+              return next
+            })
+          }}
+          aria-label="Sort sets"
+          style={{
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+            background: 'var(--bg-surface)',
+            border: '0.5px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '6px 10px',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="name">Name A–Z</option>
+          <option value="newest">Date: Newest</option>
+          <option value="oldest">Date: Oldest</option>
+          <option value="code">Set Code A–Z</option>
+          <option value="count">Most Cards</option>
+        </select>
+      </div>
 
       {filtered.length === 0 && (
         <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>
@@ -112,51 +123,33 @@ export default function SetsPage() {
         </p>
       )}
 
-      {TYPE_ORDER.map(label => {
-        const group = grouped.get(label)
-        if (!group.length) return null
-        return (
-          <div key={label} style={{ marginBottom: 8 }}>
-            <div style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              padding: '10px 0',
-              borderBottom: '0.5px solid var(--border)',
-            }}>
-              {label} ({group.length})
-            </div>
-            {group.map(set => (
-              <button
-                key={set.set_name}
-                onClick={() => navigate(`/sets/${encodeURIComponent(set.set_name)}`)}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  width: '100%',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: '0.5px solid var(--border)',
-                  padding: '10px 0',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-primary)' }}>
-                  {set.set_name}
-                </span>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0, marginLeft: 16 }}>
-                  {set.set_code} · {set.num_of_cards} cards · {set.tcg_date ?? '—'}
-                </span>
-              </button>
-            ))}
-          </div>
-        )
-      })}
+      {filteredAndSorted.map(set => (
+        <button
+          key={set.set_name}
+          onClick={() => navigate(`/sets/${encodeURIComponent(set.set_name)}`)}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: '0.5px solid var(--border)',
+            padding: '10px 0',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-primary)' }}>
+            {set.set_name}
+          </span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0, marginLeft: 16 }}>
+            {set.set_code} · {set.num_of_cards} cards · {set.tcg_date ?? '—'}
+          </span>
+        </button>
+      ))}
     </main>
   )
 }

@@ -20,3 +20,15 @@ export async function fetchCardById(id) {
   if (!res.ok) throw new Error('Card not found')
   return res.json()
 }
+
+export async function fetchSets() {
+  const res = await fetch(`${BASE}/sets`)
+  if (!res.ok) throw new Error('Failed to fetch sets')
+  return res.json()
+}
+
+export async function fetchCardsBySet(setName) {
+  const res = await fetch(`${BASE}/sets/${encodeURIComponent(setName)}`)
+  if (!res.ok) throw new Error('Failed to fetch set cards')
+  return res.json()
+}

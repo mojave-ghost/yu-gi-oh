@@ -13,9 +13,17 @@ export default function SetDetailPage() {
   const setsCache = useQueryClient().getQueryData(['sets'])
   const meta      = setsCache?.find(s => s.set_name === decodedName) ?? null
 
-  const setCode    = meta?.set_code ?? '—'
-  const numOfCards = meta?.num_of_cards != null ? `${meta.num_of_cards} cards` : '—'
-  const tcgDate    = meta?.tcg_date ?? '—'
+  const tcgDateFormatted = meta?.tcg_date
+    ? new Date(meta.tcg_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : '—'
+
+  const metaRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '5px 0',
+    borderBottom: '0.5px solid var(--border)',
+    fontSize: '13px',
+  }
 
   return (
     <div style={{ padding: 'var(--section-pad)' }}>
@@ -35,13 +43,39 @@ export default function SetDetailPage() {
         ← Back
       </button>
 
+      {meta?.set_image && (
+        <img
+          src={meta.set_image}
+          alt={decodedName + ' pack art'}
+          loading="lazy"
+          decoding="async"
+          style={{
+            display: 'block',
+            width: '160px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '16px',
+          }}
+        />
+      )}
+
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', marginBottom: '4px' }}>
         {decodedName}
       </h1>
 
-      <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-        {setCode} · {numOfCards} · {tcgDate}
-      </p>
+      <div style={{ marginBottom: '24px' }}>
+        <div style={metaRowStyle}>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--text-secondary)' }}>Set code</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{meta?.set_code ?? '—'}</span>
+        </div>
+        <div style={metaRowStyle}>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--text-secondary)' }}>Cards</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{meta?.num_of_cards ?? '—'}</span>
+        </div>
+        <div style={metaRowStyle}>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--text-secondary)' }}>TCG release</span>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--text-primary)' }}>{tcgDateFormatted}</span>
+        </div>
+      </div>
 
       {isError ? (
         <p style={{ color: 'var(--red)', fontFamily: 'var(--font-body)' }}>

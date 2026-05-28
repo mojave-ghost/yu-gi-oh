@@ -8,7 +8,7 @@ const gridStyle = {
   gap: 'var(--card-gap)',
 }
 
-export default function CardGrid({ cards, isLoading, isError }) {
+export default function CardGrid({ cards, isLoading, isError, setName, setPriceMap, highestRarityCardId }) {
   if (isError) {
     return (
       <p style={{ color: 'var(--red)', fontFamily: 'var(--font-body)', padding: '2rem 0' }}>
@@ -42,7 +42,22 @@ export default function CardGrid({ cards, isLoading, isError }) {
 
   return (
     <div style={gridStyle}>
-      {cards.map(card => <CardTile key={card.id} card={card} />)}
+      {cards.map(card => {
+        const setEntry = setName
+          ? card.card_sets?.find(s => s.set_name === setName)
+          : null
+        const rarityCode = setEntry?.set_rarity_code ?? null
+        const setPrice = setPriceMap?.get(card.id) ?? null
+        return (
+          <CardTile
+            key={card.id}
+            card={card}
+            rarityCode={rarityCode}
+            setPrice={setPrice}
+            isHighestRarity={card.id === highestRarityCardId}
+          />
+        )
+      })}
     </div>
   )
 }

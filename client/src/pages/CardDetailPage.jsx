@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCardDetail } from '../hooks/useCardDetail'
 import CardTypeBadge from '../components/cards/CardTypeBadge'
+import { getRarityStyle } from '../utils/rarityStyles'
 
 export default function CardDetailPage() {
   const { id }   = useParams()
@@ -17,30 +18,6 @@ export default function CardDetailPage() {
   if (isError)   return <p style={{ padding: 'var(--section-pad)', color: 'var(--red)' }}>Card not found.</p>
 
   console.log('card_images:', card.card_images, 'length:', card.card_images?.length)
-
-  function getRarityStyle(code) {
-    switch (code) {
-      case '(C)':    return { bg: 'var(--bg-surface)',         color: 'var(--text-secondary)',    label: 'Common'    }
-      case '(R)':    return { bg: 'var(--card-rare-bg)',       color: 'var(--card-rare-text)',    label: 'Rare'      }
-      case '(SR)':   return { bg: 'var(--card-link-light)',    color: 'var(--card-link-text)',    label: 'Super'     }
-      case '(UR)':   return { bg: 'var(--card-normal-light)',  color: 'var(--card-normal-text)',  label: 'Ultra'     }
-      case '(ScR)':  return { bg: 'var(--card-trap-light)',    color: 'var(--card-trap-text)',    label: 'Secret'    }
-      case '(StR)':  return { bg: 'var(--card-spell-light)',   color: 'var(--card-spell-text)',   label: 'Starlight' }
-      case '(GR)':   return { bg: 'var(--card-synchro-light)', color: 'var(--card-synchro-text)', label: 'Ghost'     }
-      case '(PScR)': return { bg: 'var(--card-fusion-light)',  color: 'var(--card-fusion-text)',  label: 'Prismatic'     }
-      case '(UtR)':  return { bg: 'var(--card-xyz-light)',    color: 'var(--card-xyz-text)',    label: 'Ultimate'      }
-      case '(GUR)':  return { bg: 'var(--card-normal-light)', color: 'var(--card-normal-text)', label: 'Gold'          }
-      case '(PG)':   return { bg: 'var(--card-normal-light)', color: 'var(--card-normal-text)', label: 'Gold'          }
-      case '(PR)':   return { bg: 'var(--card-synchro-light)',color: 'var(--card-synchro-text)',label: 'Parallel'      }
-      case '(SFR)':  return { bg: 'var(--card-spell-light)',  color: 'var(--card-spell-text)',  label: 'Starfoil'      }
-      case '(SHR)':  return { bg: 'var(--card-spell-light)',  color: 'var(--card-spell-text)',  label: 'Shatterfoil'   }
-      case '(PS)':   return { bg: 'var(--card-trap-light)',   color: 'var(--card-trap-text)',   label: 'Platinum'      }
-      case '(DSPR)': return { bg: 'var(--card-link-light)',   color: 'var(--card-link-text)',   label: 'Duel Terminal' }
-      case '(CR)':   return { bg: 'var(--card-trap-light)',   color: 'var(--card-trap-text)',   label: "Collector's"   }
-      case '':       return { bg: 'var(--bg-surface)',        color: 'var(--text-secondary)',   label: 'Special'       }
-      default:       return { bg: 'var(--bg-surface)',         color: 'var(--text-secondary)',    label: 'Special'   }
-    }
-  }
 
   function sortSets(sets, key) {
     switch (key) {

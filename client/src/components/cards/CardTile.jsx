@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import CardTypeBadge from './CardTypeBadge'
 import { getTypeStripeColor } from '../../utils/cardTypeColors'
+import { getRarityStyle } from '../../utils/rarityStyles'
 
-export default function CardTile({ card }) {
+export default function CardTile({ card, rarityCode, setPrice, isHighestRarity }) {
   const navigate = useNavigate()
-  const price = card.card_prices?.[0]?.tcgplayer_price
+  const price = setPrice != null ? setPrice : card.card_prices?.[0]?.tcgplayer_price
   const stripeColor = getTypeStripeColor(card.type)
 
   return (
@@ -36,6 +37,39 @@ export default function CardTile({ card }) {
       )}
 
       <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {rarityCode && (() => {
+          const rarity = getRarityStyle(rarityCode)
+          return (
+            <span style={{
+              fontSize: '9px',
+              fontWeight: 500,
+              fontFamily: 'var(--font-body)',
+              padding: '2px 5px',
+              borderRadius: 'var(--radius-sm)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              whiteSpace: 'nowrap',
+              background: rarity.bg,
+              color: rarity.color,
+              display: 'inline-block',
+              marginBottom: '4px',
+            }}>
+              {rarity.label}
+            </span>
+          )
+        })()}
+        {isHighestRarity && (
+          <span style={{
+            fontSize: '9px',
+            color: 'var(--gold)',
+            fontFamily: 'var(--font-body)',
+            fontWeight: 500,
+            display: 'block',
+            marginBottom: '4px',
+          }}>
+            ★ Chase card
+          </span>
+        )}
         <p style={{
           fontFamily: 'var(--font-display)',
           fontSize: '12px',

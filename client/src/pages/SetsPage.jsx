@@ -1,4 +1,6 @@
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useDebouncedCallback } from 'use-debounce'
 import { useSets } from '../hooks/useSets'
 
 const TYPE_ORDER = [
@@ -26,8 +28,27 @@ function normalizeType(raw) {
 }
 
 export default function SetsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { data: sets, isLoading, isError } = useSets()
+
+  const setq = searchParams.get('setq') || ''
+  const [localSetQ, setLocalSetQ] = useState(setq)
+  useEffect(() => { setLocalSetQ(setq) }, [setq])
+
+  const debouncedSetQ = useDebouncedCallback((value) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (value) next.set('setq', value)
+      else        next.delete('setq')
+      return next
+    })
+  }, 300)
+
+  function handleSearch(e) {
+    setLocalSetQ(e.target.value)
+    debouncedSetQ(e.target.value)
+  }
 
   if (isLoading) return (
     <p style={{ padding: 'var(--section-pad)', color: 'var(--text-secondary)' }}>
@@ -41,8 +62,12 @@ export default function SetsPage() {
     </p>
   )
 
+  const filtered = setq
+    ? sets.filter(s => s.set_name.toLowerCase().includes(setq.toLowerCase()))
+    : sets
+
   const grouped = new Map(TYPE_ORDER.map(label => [label, []]))
-  for (const set of sets) {
+  for (const set of filtered) {
     const label = normalizeType(set.set_type)
     grouped.get(label).push(set)
   }
@@ -58,6 +83,34 @@ export default function SetsPage() {
       }}>
         Sets
       </h1>
+
+      <input
+        type="search"
+        placeholder="Filter sets…"
+        value={localSetQ}
+        onChange={handleSearch}
+        aria-label="Filter sets"
+        style={{
+          width: '100%',
+          height: '40px',
+          padding: '0 12px',
+          fontFamily: 'var(--font-body)',
+          fontSize: 13,
+          background: 'var(--bg-surface)',
+          border: '0.5px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--text-primary)',
+          outline: 'none',
+          marginBottom: 24,
+          boxSizing: 'border-box',
+        }}
+      />
+
+      {filtered.length === 0 && (
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>
+          No sets match &ldquo;{setq}&rdquo;.
+        </p>
+      )}
 
       {TYPE_ORDER.map(label => {
         const group = grouped.get(label)
@@ -76,7 +129,7 @@ export default function SetsPage() {
             </div>
             {group.map(set => (
               <button
-                key={set.set_code}
+                key={set.set_name}
                 onClick={() => navigate(`/sets/${encodeURIComponent(set.set_name)}`)}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}

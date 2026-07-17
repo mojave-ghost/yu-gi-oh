@@ -9,6 +9,7 @@ import ArchetypeDetailPage from './pages/ArchetypeDetailPage'
 import BanlistPage from './pages/BanlistPage'
 import MiscPage from './pages/MiscPage'
 import ListsPage from './pages/ListsPage'
+import ListDetailPage from './pages/ListDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/banlist" element={<BanlistPage />} />
         <Route path="/misc" element={<MiscPage />} />
         <Route path="/lists" element={<ListsPage />} />
+        <Route path="/lists/:listId" element={<ListDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </div>

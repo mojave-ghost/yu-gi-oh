@@ -1,307 +1,472 @@
-# Slice B: Lists Index Page
+# Slice C — List Detail Page
 
-## Deliverables
+## Overview
 
-- New file: `client/src/pages/ListsPage.jsx`
-- Edit: `client/src/App.jsx` (import + one route line)
-
-No server changes. No other files.
-
----
-
-## App.jsx changes
-
-Two lines added, following the established import + route pattern:
-
-**Import** (line 11, after `MiscPage`):
-```js
-import ListsPage from './pages/ListsPage'
-```
-
-**Route** (after `/misc` route, before `*` catch-all):
-```jsx
-<Route path="/lists" element={<ListsPage />} />
-```
+Two files change:
+- **NEW** `client/src/pages/ListDetailPage.jsx`
+- **EDIT** `client/src/App.jsx` — one import + one route
 
 ---
 
-## ListsPage.jsx
+## Dependency check
+
+`@tabler/icons-react` is **not** in `client/package.json`. The pencil edit hint requires it.
+Install before writing the component:
+
+```
+cd client && npm install @tabler/icons-react
+```
+
+Use `IconPencil` from `@tabler/icons-react` with `size={14}`.
+
+---
+
+## `client/src/pages/ListDetailPage.jsx`
 
 ### Imports
 
 ```js
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useLists, calcListTotal } from '../hooks/useLists'
+import { useParams, useNavigate } from 'react-router-dom'
+import { IconPencil } from '@tabler/icons-react'
+import { useLists, calcItemPrice, calcListTotal, CONDITION_MULTIPLIERS } from '../hooks/useLists'
+import { getRarityStyle } from '../utils/rarityStyles'
 ```
 
 ### State
 
-| Name | Type | Purpose |
+| Variable | Type | Purpose |
 |---|---|---|
-| `modalOpen` | `boolean` | Controls modal visibility |
-| `draftName` | `string` | Controlled input value inside modal |
-| `hoveredId` | `string \| null` | Tracks which list card is hovered (for border highlight) |
+| `editing` | boolean | inline name-input active |
+| `draftName` | string | controlled value for rename input |
+| `confirmDelete` | boolean | delete confirmation row visible |
+| `nameHovered` | boolean | shows pencil icon (all inline styles — no CSS hover class) |
 
-`hoveredId` uses the `onMouseEnter` / `onMouseLeave` → `e.currentTarget.style` pattern from SetsPage — i.e., mutate `e.currentTarget.style.border` directly rather than storing state, since it's purely cosmetic with no re-render cost.
+### Top-level wiring
 
-### Outer wrapper
+```js
+const { listId } = useParams()
+const navigate = useNavigate()
+const { getList, renameList, deleteList, removeItem, updateItem } = useLists()
+const list = getList(listId)
+```
 
-Matches the SetsPage / MiscPage pattern exactly:
+### Invalid ID guard
+
+Rendered **before** anything else. If `list` is `undefined`, return early:
 
 ```jsx
-<main style={{ padding: 'var(--section-pad)', maxWidth: 860, margin: '0 auto' }}>
+<div style={{ padding: 'var(--section-pad)' }}>
+  <p style={{ fontFamily: 'var(--font-body)', color: 'var(--red)' }}>List not found.</p>
+  <button onClick={() => navigate('/lists')} style={backBtnStyle}>← My Lists</button>
+</div>
 ```
+
+Nothing below renders.
 
 ---
 
-## Header row
+## Page structure (happy path)
 
-```
-┌─────────────────────────────────────────────────┐
-│ My Lists (h1, Cinzel 28px)       [New list btn] │
-└─────────────────────────────────────────────────┘
-```
+All content in `<main style={{ padding: 'var(--section-pad)', maxWidth: 900, margin: '0 auto' }}>`.
+
+### 1. Back button
+
+Pattern matches `CardDetailPage` and `SetDetailPage` exactly:
 
 ```js
-{
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 24,
-}
-```
-
-**`<h1>` styles:**
-```js
-{
-  fontFamily: 'var(--font-display)',
-  fontSize: 28,
-  fontWeight: 600,
-  color: 'var(--text-primary)',
-  margin: 0,
-}
-```
-
-**'New list' button styles** (reused for the modal's Create button — define once as a shared const `navyBtnStyle` above the component):
-```js
-const navyBtnStyle = {
+const backBtnStyle = {
   fontFamily: 'var(--font-body)',
-  fontSize: 13,
-  padding: '8px 16px',
-  borderRadius: 'var(--radius-md)',
-  border: '0.5px solid var(--border)',
-  background: 'var(--navy)',
-  color: 'var(--nav-text)',
+  fontSize: '13px',
+  color: 'var(--text-secondary)',
+  background: 'none',
+  border: 'none',
   cursor: 'pointer',
+  marginBottom: '1.5rem',
+  padding: 0,
 }
 ```
 
-**Ghost button styles** (Cancel button — define as `ghostBtnStyle` above the component):
+```jsx
+<button onClick={() => navigate('/lists')} style={backBtnStyle}>← My Lists</button>
+```
+
+### 2. Header row
+
+```jsx
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+  {/* left: editable name — or plain h1 for wish-list */}
+  {/* right: delete button — omitted when listId === 'wish-list' */}
+</div>
+```
+
+#### Editable list name (left side)
+
+**Wish List guard:** when `listId === 'wish-list'`, render a plain `<h1>` — no click handler, no pencil, no hover state:
+
+```jsx
+<h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', margin: 0 }}>
+  {list.name}
+</h1>
+```
+
+**All other lists — display mode** (`!editing`):
+
+```jsx
+<div
+  onMouseEnter={() => setNameHovered(true)}
+  onMouseLeave={() => setNameHovered(false)}
+  onClick={() => { setDraftName(list.name); setEditing(true) }}
+  style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'text' }}
+>
+  <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', margin: 0 }}>
+    {list.name}
+  </h1>
+  <span style={{
+    opacity: nameHovered ? 1 : 0,
+    color: 'var(--text-secondary)',
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'opacity 0.15s',
+  }}>
+    <IconPencil size={14} />
+  </span>
+</div>
+```
+
+**Edit mode** (`editing`):
+
+```jsx
+<input
+  autoFocus
+  value={draftName}
+  onChange={e => setDraftName(e.target.value)}
+  onBlur={handleRename}
+  onKeyDown={e => {
+    if (e.key === 'Enter') handleRename()
+    if (e.key === 'Escape') setEditing(false)
+  }}
+  style={{
+    fontFamily: 'var(--font-display)',
+    fontSize: '28px',
+    border: 'none',
+    borderBottom: '1.5px solid var(--navy)',
+    outline: 'none',
+    background: 'transparent',
+    color: 'var(--text-primary)',
+    padding: '0 2px',
+    width: '100%',
+    maxWidth: '480px',
+  }}
+/>
+```
+
+**`handleRename`:**
+
 ```js
-const ghostBtnStyle = {
-  fontFamily: 'var(--font-body)',
-  fontSize: 13,
-  padding: '8px 16px',
-  borderRadius: 'var(--radius-md)',
-  border: '0.5px solid var(--border)',
-  background: 'transparent',
-  color: 'var(--text-primary)',
-  cursor: 'pointer',
+function handleRename() {
+  if (draftName.trim()) renameList(listId, draftName.trim())
+  setEditing(false)
 }
 ```
 
-**'New list' onClick:**
+Empty value → `setEditing(false)` without calling `renameList`.
+
+#### Delete button (right side, omitted when `listId === 'wish-list'`)
+
+**Normal state** (`!confirmDelete`):
+
+```jsx
+<button
+  onClick={() => setConfirmDelete(true)}
+  style={{
+    fontFamily: 'var(--font-body)',
+    fontSize: '13px',
+    color: 'var(--red)',
+    background: 'none',
+    border: '0.5px solid var(--red)',
+    borderRadius: 'var(--radius-md)',
+    padding: '6px 12px',
+    cursor: 'pointer',
+  }}
+>
+  Delete list
+</button>
+```
+
+**Confirmation state** (`confirmDelete`): replace the button with an inline flex row:
+
+```jsx
+<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+  <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)' }}>
+    Delete "{list.name}"? This cannot be undone.
+  </span>
+  <button onClick={() => setConfirmDelete(false)} style={cancelBtnStyle}>Cancel</button>
+  <button onClick={handleDelete} style={deleteBtnStyle}>Delete</button>
+</div>
+```
+
+Button styles (define as module-level consts above the component):
+
 ```js
-() => {
-  setDraftName(`My List ${lists.length}`)
-  setModalOpen(true)
+const cancelBtnStyle = {
+  fontFamily: 'var(--font-body)', fontSize: '13px',
+  background: 'none', border: '0.5px solid var(--border)',
+  borderRadius: 'var(--radius-md)', padding: '6px 12px', cursor: 'pointer',
+}
+const deleteBtnStyle = {
+  ...cancelBtnStyle,
+  color: 'var(--red)', border: '0.5px solid var(--red)',
 }
 ```
-The default name is computed once at click time — not reactive to subsequent list additions while the modal is open.
-
----
-
-## List cards grid
-
-Rendered between the header row and the modal logic (the modal is always in the JSX tree; its visibility is controlled by `modalOpen`).
 
 ```js
-{
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-  gap: 16,
+function handleDelete() {
+  deleteList(listId)
+  navigate('/lists')
 }
 ```
 
-### Individual card
+### 3. Running total bar
 
-**Base styles:**
-```js
-{
-  background: 'var(--bg-surface)',
-  border: '0.5px solid var(--border)',
-  borderRadius: 'var(--radius-lg)',
-  padding: 16,
-  cursor: 'pointer',
-}
-```
-
-**Hover:** `onMouseEnter` → `e.currentTarget.style.border = '0.5px solid var(--cyan)'`  
-**Un-hover:** `onMouseLeave` → `e.currentTarget.style.border = '0.5px solid var(--border)'`
-
-**onClick:** `navigate('/lists/${list.id}')`
-
-**Card contents (top to bottom):**
-
-| Element | Content | Styles |
-|---|---|---|
-| Name row | `{list.id === 'wish-list' ? '★ ' : ''}{list.name}` | `fontFamily: 'var(--font-display)'`, `fontSize: 16`, `marginBottom: 8`, star in `color: 'var(--gold)'` |
-| Item count | `'{n} cards'` where n = `list.items.length` | `fontFamily: 'var(--font-body)'`, `fontSize: 13`, `color: 'var(--text-secondary)'` |
-| Total value | `'$X.XX estimated'` using `calcListTotal(list).toFixed(2)` | `fontFamily: 'var(--font-body)'`, `fontSize: 13`, `color: 'var(--gold)'`, `fontWeight: 500` |
-| Last updated | `new Date(list.updatedAt).toLocaleDateString()` | `fontFamily: 'var(--font-body)'`, `fontSize: 11`, `color: 'var(--text-secondary)'`, `marginTop: 8` |
-
-The Wish List star `★` is rendered inline in the name span. The star itself gets `color: 'var(--gold)'` via a wrapping `<span>`. The rest of the list name uses `color: 'var(--text-primary)'`.
-
----
-
-## Empty state
-
-Condition: `lists.length === 1 && lists[0].id === 'wish-list' && lists[0].items.length === 0`
-
-Rendered below the grid (which would be a single empty Wish List card):
+Directly below the header row, before the table:
 
 ```jsx
 <p style={{
   fontFamily: 'var(--font-body)',
-  fontSize: 14,
+  fontSize: '16px',
+  fontWeight: 500,
+  color: 'var(--gold)',
+  marginBottom: '24px',
+  marginTop: 0,
+}}>
+  Total estimated cost: ${calcListTotal(list).toFixed(2)}
+</p>
+```
+
+Updates live because `useLists` re-renders on every `updateItem` / `removeItem` call.
+
+---
+
+## Item table
+
+Shown when `list.items.length > 0`.
+
+```jsx
+<table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '13px' }}>
+  <thead>
+    <tr style={{ background: 'var(--navy)', color: 'var(--nav-text)' }}>
+      {['Card', 'Set & Rarity', 'Condition', 'Qty', 'Price', ''].map((h, i) => (
+        <th key={i} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 500 }}>{h}</th>
+      ))}
+    </tr>
+  </thead>
+  <tbody>
+    {list.items.map(item => /* item row */)}
+  </tbody>
+</table>
+```
+
+### Shared select style
+
+Used by both Condition and Qty columns — matches the SortControl / SetDetailPage pattern:
+
+```js
+const selectStyle = {
+  fontSize: '13px',
+  fontFamily: 'var(--font-body)',
+  background: 'var(--bg-surface)',
+  border: '0.5px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  padding: '4px 8px',
+  color: 'var(--text-primary)',
+  cursor: 'pointer',
+}
+```
+
+### Item row
+
+`<tr key={item.itemId} style={{ borderBottom: '0.5px solid var(--border)' }}>` — six `<td>` cells.
+
+**Card column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+  <img
+    src={item.cardImage}
+    alt={item.cardName}
+    width={36}
+    loading="lazy"
+    decoding="async"
+    style={{ borderRadius: '2px', display: 'block' }}
+  />
+  <span
+    onClick={() => navigate(`/card/${item.cardId}`)}
+    style={{ color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer' }}
+  >
+    {item.cardName}
+  </span>
+</div>
+```
+
+**Set & Rarity column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<div>
+  {item.setUrl
+    ? <a href={item.setUrl} target="_blank" rel="noopener noreferrer"
+         style={{ fontSize: '12px', color: 'var(--text-primary)', textDecoration: 'none' }}>
+        {item.setName}
+      </a>
+    : <span style={{ fontSize: '12px' }}>{item.setName}</span>
+  }
+  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+    <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{item.setCode}</span>
+    {(() => {
+      const s = getRarityStyle(item.setRarityCode)
+      return (
+        <span style={{
+          background: s.bg, color: s.color,
+          fontSize: '10px', padding: '2px 5px',
+          borderRadius: 'var(--radius-sm)',
+        }}>
+          {s.label}
+        </span>
+      )
+    })()}
+  </div>
+</div>
+```
+
+**Condition column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<select
+  value={item.condition}
+  onChange={e => updateItem(listId, item.itemId, { condition: e.target.value })}
+  style={selectStyle}
+>
+  {Object.keys(CONDITION_MULTIPLIERS).map(c => <option key={c} value={c}>{c}</option>)}
+</select>
+```
+
+`Object.keys(CONDITION_MULTIPLIERS)` keeps options in sync with the hook's source of truth.
+Order in the hook: NM → LP → MP → HP → DMG.
+
+**Qty column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<select
+  value={item.quantity}
+  onChange={e => updateItem(listId, item.itemId, { quantity: Number(e.target.value) })}
+  style={selectStyle}
+>
+  {[1, 2, 3].map(n => <option key={n} value={n}>{n}</option>)}
+</select>
+```
+
+**Price column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<div>
+  <div style={{ color: 'var(--gold)', fontWeight: 500 }}>
+    ${calcItemPrice(item).toFixed(2)}
+  </div>
+  <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+    from ${parseFloat(item.setPrice || 0).toFixed(2)} ea
+  </div>
+</div>
+```
+
+**Remove column** `<td style={{ padding: '10px 12px' }}>`
+
+```jsx
+<button
+  onClick={() => removeItem(listId, item.itemId)}
+  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '16px', cursor: 'pointer', padding: 0 }}
+>
+  ×
+</button>
+```
+
+---
+
+## Empty list state
+
+Rendered instead of the table when `list.items.length === 0`:
+
+```jsx
+<p style={{
+  fontFamily: 'var(--font-body)',
+  fontSize: '14px',
   color: 'var(--text-secondary)',
   textAlign: 'center',
-  marginTop: 48,
+  marginTop: '48px',
 }}>
-  Add cards from any card detail page to start planning your purchases.
+  No cards yet. Browse cards and add them to this list.
 </p>
 ```
 
 ---
 
-## Create list modal
+## TCGPlayer disclaimer
 
-Always present in the JSX tree. Rendered as a sibling after `</main>` (not nested inside it), so the fixed overlay fills the full viewport without being clipped by the page wrapper.
+Rendered **below the table** only when `list.items.length > 0`:
 
-**Overlay:**
-```js
-{
-  position: 'fixed',
-  top: 0, right: 0, bottom: 0, left: 0,
-  background: 'rgba(0,0,0,0.45)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 100,
-}
+```jsx
+<p style={{
+  fontFamily: 'var(--font-body)',
+  fontSize: '11px',
+  color: 'var(--text-secondary)',
+  fontStyle: 'italic',
+  marginTop: '8px',
+}}>
+  Prices are estimates. Final prices may vary on TCGPlayer.
+</p>
 ```
-
-If `!modalOpen`, return `null` (or render nothing via short-circuit).
-
-**Modal card:**
-```js
-{
-  background: 'var(--bg-page)',
-  borderRadius: 'var(--radius-lg)',
-  border: '0.5px solid var(--border)',
-  padding: 24,
-  width: 400,
-  maxWidth: '90vw',
-}
-```
-
-**Modal contents, top to bottom:**
-
-1. **Header row** — `display: flex`, `justifyContent: 'space-between'`, `alignItems: 'center'`
-   - Left: `'Create a new list'` — `fontFamily: 'var(--font-body)'`, `fontSize: 16`, `fontWeight: 500`
-   - Right: `×` close button — `background: 'none'`, `border: 'none'`, `fontSize: 18`, `cursor: 'pointer'`, `color: 'var(--text-secondary)'` — onClick closes modal
-
-2. **Label:** `'List name'` — `display: 'block'`, `fontSize: 12`, `color: 'var(--text-secondary)'`, `marginTop: 16`, `marginBottom: 6`, `fontFamily: 'var(--font-body)'`
-
-3. **Input:**
-   ```js
-   {
-     width: '100%',
-     height: 36,
-     padding: '0 10px',
-     fontFamily: 'var(--font-body)',
-     fontSize: 14,
-     border: '0.5px solid var(--border)',
-     borderRadius: 'var(--radius-md)',
-     background: 'var(--bg-surface)',
-     color: 'var(--text-primary)',
-     outline: 'none',
-     boxSizing: 'border-box',
-   }
-   ```
-   - `value={draftName}` + `onChange={e => setDraftName(e.target.value)}`
-   - `autoFocus`
-   - `onKeyDown`: Enter → submit (if `draftName.trim()` non-empty), Escape → close modal
-
-4. **Button row:** `marginTop: 20`, `display: 'flex'`, `gap: 8`, `justifyContent: 'flex-end'`
-   - Cancel: `ghostBtnStyle`, onClick closes modal
-   - Create: `navyBtnStyle`, `disabled={!draftName.trim()}`, onClick submits
-
-**Submit logic:**
-```js
-function handleCreate() {
-  const newList = createList(draftName.trim())
-  setModalOpen(false)
-  navigate(`/lists/${newList.id}`)
-}
-```
-Called by both the Create button click and the Enter key handler.
-
-**Close logic:** `setModalOpen(false)` only — `draftName` is reset on next open, not on close.
 
 ---
 
-## Component skeleton (structure only)
+## `client/src/App.jsx` changes
 
-```
-export default function ListsPage() {
-  // state: modalOpen, draftName
-  // useLists: lists, createList
-  // useNavigate
+Add after the `ListsPage` import:
 
-  function handleCreate() { ... }
-
-  return (
-    <>
-      <main ...>
-        {/* header row */}
-        {/* list cards grid */}
-        {/* empty state (conditional) */}
-      </main>
-
-      {/* modal (outside <main>) */}
-      {modalOpen && (
-        <div ...overlay>
-          <div ...card>
-            {/* header row */}
-            {/* label + input */}
-            {/* button row */}
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
+```js
+import ListDetailPage from './pages/ListDetailPage'
 ```
 
-The fragment wrapper `<>...</>` allows `<main>` and the modal overlay to be siblings without an extra DOM node.
+Add after the `/lists` route:
+
+```jsx
+<Route path="/lists/:listId" element={<ListDetailPage />} />
+```
+
+No other files change.
 
 ---
 
-## Constraints check
+## Item shape reference
 
-- No hex values — all colors are CSS custom properties or the one `rgba(0,0,0,0.45)` semi-transparent overlay (not a brand color, acceptable as a one-off overlay scrim).
-- `--gold` used for price display and the Wish List star — the star is a UI affordance distinguishing a special card, not decoration.
-- No filter state → no `useSearchParams` needed on this page.
-- `useState` for `modalOpen` and `draftName` is correct — these are transient UI interaction states, not shareable/bookmarkable filter state.
+`addItem` callers (on `CardDetailPage`) must pass these fields. `ListDetailPage` is read-only with respect to item shape.
+
+| Field | Type | Source |
+|---|---|---|
+| `itemId` | string (UUID) | added by `useLists.addItem` |
+| `cardId` | number | `card.id` |
+| `cardName` | string | `card.name` |
+| `cardImage` | string | image URL |
+| `setName` | string | `set_entry.set_name` |
+| `setCode` | string | `set_entry.set_code` |
+| `setRarityCode` | string | `set_entry.set_rarity_code` |
+| `setUrl` | string \| undefined | TCGPlayer URL if available |
+| `setPrice` | string | `set_entry.set_price` |
+| `condition` | "NM"\|"LP"\|"MP"\|"HP"\|"DMG" | default "NM" at add time |
+| `quantity` | 1\|2\|3 | default 1 at add time |
+
+---
+
+## Tokens used
+
+All already defined in `tokens.css`. No new tokens needed.
+
+`--red` · `--gold` · `--navy` · `--nav-text` · `--text-primary` · `--text-secondary` · `--bg-surface` · `--border` · `--font-display` · `--font-body` · `--radius-sm` · `--radius-md` · `--section-pad`

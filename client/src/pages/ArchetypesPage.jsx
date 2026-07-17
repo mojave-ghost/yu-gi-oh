@@ -93,43 +93,45 @@ export default function ArchetypesPage() {
       {sortedLetters.map(letter => (
         <div key={letter}>
           <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 12,
-            fontWeight: 600,
-            color: 'var(--text-secondary)',
-            padding: '4px 0',
+            background: 'var(--navy)',
+            color: 'var(--nav-text)',
+            padding: '4px 12px',
+            fontSize: '12px',
+            fontWeight: 500,
+            fontFamily: 'var(--font-body)',
+            letterSpacing: '0.06em',
             position: 'sticky',
             top: 0,
-            backgroundColor: 'var(--bg-page)',
-            borderBottom: '1px solid var(--border)',
-            letterSpacing: 1,
             zIndex: 1,
           }}>
             {letter}
           </div>
-          {groups.get(letter).map(archetype => (
-            <button
-              key={archetype.archetype_name}
-              onClick={() => navigate(`/archetypes/${encodeURIComponent(archetype.archetype_name)}`)}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              style={{
-                display: 'block',
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: '0.5px solid var(--border)',
-                padding: '8px 0',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'var(--font-body)',
-                fontSize: 14,
-                color: 'var(--text-primary)',
-              }}
-            >
-              {archetype.archetype_name}
-            </button>
-          ))}
+          {groups.get(letter).map((archetype, index) => {
+            const stripeBackground = index % 2 === 0 ? 'transparent' : 'rgba(201, 168, 76, 0.07)'
+            return (
+              <button
+                key={archetype.archetype_name}
+                onClick={() => navigate(`/archetypes/${encodeURIComponent(archetype.archetype_name)}`)}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = stripeBackground }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  background: stripeBackground,
+                  border: 'none',
+                  borderBottom: '0.5px solid var(--border)',
+                  padding: '8px 0',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 14,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {archetype.archetype_name}
+              </button>
+            )
+          })}
         </div>
       ))}
     </main>

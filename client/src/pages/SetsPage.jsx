@@ -13,6 +13,36 @@ function sortSets(sets, key) {
   return sorted
 }
 
+function SetRow({ set, index, onClick }) {
+  const stripeBackground = index % 2 === 0 ? 'transparent' : 'rgba(201, 168, 76, 0.07)'
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-surface)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = stripeBackground }}
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        background: stripeBackground,
+        border: 'none',
+        borderBottom: '0.5px solid var(--border)',
+        padding: '10px 0',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-primary)' }}>
+        {set.set_name}
+      </span>
+      <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0, marginLeft: 16 }}>
+        {set.set_code} · {set.num_of_cards} cards · {set.tcg_date ?? '—'}
+      </span>
+    </button>
+  )
+}
+
 export default function SetsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -123,32 +153,13 @@ export default function SetsPage() {
         </p>
       )}
 
-      {filteredAndSorted.map(set => (
-        <button
+      {filteredAndSorted.map((set, index) => (
+        <SetRow
           key={set.set_name}
+          set={set}
+          index={index}
           onClick={() => navigate(`/sets/${encodeURIComponent(set.set_name)}`)}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-surface)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            width: '100%',
-            background: 'transparent',
-            border: 'none',
-            borderBottom: '0.5px solid var(--border)',
-            padding: '10px 0',
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-primary)' }}>
-            {set.set_name}
-          </span>
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0, marginLeft: 16 }}>
-            {set.set_code} · {set.num_of_cards} cards · {set.tcg_date ?? '—'}
-          </span>
-        </button>
+        />
       ))}
     </main>
   )

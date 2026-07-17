@@ -44,3 +44,9 @@ export async function fetchCardsByArchetype(name) {
   if (!res.ok) throw new Error('Failed to fetch archetype cards')
   return res.json()
 }
+
+export async function fetchBanlist() {
+  const res = await fetch(`${BASE}/banlist`)
+  if (!res.ok) throw new Error('Failed to fetch banlist')
+  return res.json()
+}

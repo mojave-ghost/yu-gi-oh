@@ -6,6 +6,7 @@ import SetsPage from './pages/SetsPage'
 import SetDetailPage from './pages/SetDetailPage'
 import ArchetypesPage from './pages/ArchetypesPage'
 import ArchetypeDetailPage from './pages/ArchetypeDetailPage'
+import BanlistPage from './pages/BanlistPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/sets/:setName" element={<SetDetailPage />} />
         <Route path="/archetypes" element={<ArchetypesPage />} />
         <Route path="/archetypes/:name" element={<ArchetypeDetailPage />} />
+        <Route path="/banlist" element={<BanlistPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </div>

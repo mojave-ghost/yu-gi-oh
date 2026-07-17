@@ -10,6 +10,7 @@
   --cyan: #4DB8D4;
   --gold: #C9A84C;
   --red: #B33020;
+  --white: #fff;
 
   /* NavBar / SearchBar overlays */
   --search-nav-bg: rgba(255,255,255,0.08);

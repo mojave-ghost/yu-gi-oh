@@ -6,7 +6,7 @@ const NAV_LINKS = [
   { to: '/browse',     label: 'Browse'     },
   { to: '/sets',       label: 'Sets'       },
   { to: '/archetypes', label: 'Archetypes' },
-  { to: '/banlist',    label: 'Banlist'    },
+  { to: '/misc',       label: 'Misc'       },
 ]
 
 function navLinkStyle({ isActive }) {

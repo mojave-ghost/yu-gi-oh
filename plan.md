@@ -52,6 +52,12 @@ const badgeStyle = {
 
 ---
 
+## Token check
+
+Before implementing the badge style, verify `--card-link-text` exists in `client/src/styles/tokens.css`. It is **not** listed in the CLAUDE.md token summary. If absent, add it — likely white or near-white for contrast against `var(--cyan)`. No color may be hardcoded in the component.
+
+---
+
 ## Render changes
 
 Both the desktop map (currently lines 83–88) and the mobile map (lines 148–157) destructure only `{ to, label }` and render `{label}` inside each `<NavLink>`. Both need to render the badge conditionally.

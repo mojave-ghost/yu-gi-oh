@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react'
 import { Link, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import SearchBar from '../search/SearchBar'
+import { useLists } from '../../hooks/useLists'
 
 const NAV_LINKS = [
   { to: '/browse',     label: 'Browse'     },
   { to: '/sets',       label: 'Sets'       },
   { to: '/archetypes', label: 'Archetypes' },
+  { to: '/lists',      label: 'My Lists'   },
   { to: '/misc',       label: 'Misc'       },
 ]
+
+const badgeStyle = {
+  background:   'var(--cyan)',
+  color:        'var(--card-link-text)',
+  fontSize:     '10px',
+  fontWeight:   500,
+  padding:      '1px 6px',
+  borderRadius: '10px',
+  marginLeft:   '4px',
+  fontFamily:   'var(--font-body)',
+}
 
 function navLinkStyle({ isActive }) {
   return {
@@ -25,6 +38,8 @@ export default function NavBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { lists } = useLists()
+  const totalItems = lists.reduce((sum, list) => sum + list.items.length, 0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
 
@@ -83,6 +98,9 @@ export default function NavBar() {
             {NAV_LINKS.map(({ to, label }) => (
               <NavLink key={to} to={to} style={navLinkStyle}>
                 {label}
+                {to === '/lists' && totalItems > 0 && (
+                  <span style={badgeStyle}>{totalItems}</span>
+                )}
               </NavLink>
             ))}
           </div>
@@ -153,6 +171,9 @@ export default function NavBar() {
               onClick={() => setMenuOpen(false)}
             >
               {label}
+              {to === '/lists' && totalItems > 0 && (
+                <span style={badgeStyle}>{totalItems}</span>
+              )}
             </NavLink>
           ))}
         </div>

@@ -1,121 +1,162 @@
-# Plan: Misc Section Landing Page
+# Slice A: useLists Data Layer
 
-## Overview
+## Deliverable
 
-Three files change. One new file is created. The `/banlist` route and page are untouched.
+One new file: `client/src/hooks/useLists.js`
+
+No server changes. No additional files.
 
 ---
 
-## File 1 — `client/src/components/layout/NavBar.jsx`
+## Storage shape
 
-**Change:** Replace the `Banlist` entry in `NAV_LINKS` (line 9) with `Misc`.
+**localStorage key:** `ygo-lists`
+
+```json
+{
+  "lists": [
+    {
+      "id": "string (UUID)",
+      "name": "string",
+      "createdAt": "ISO string",
+      "updatedAt": "ISO string",
+      "items": [
+        {
+          "itemId": "string (UUID)",
+          "cardId": "number",
+          "cardName": "string",
+          "cardImage": "string (image_url_small)",
+          "cardType": "string",
+          "setName": "string",
+          "setCode": "string",
+          "setRarity": "string",
+          "setRarityCode": "string",
+          "setPrice": "string",
+          "setUrl": "string",
+          "condition": "NM | LP | MP | HP | DMG",
+          "quantity": "number (1–3)"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Initialization
+
+On first load, read `localStorage.getItem('ygo-lists')`. If the key is absent or unparseable, seed localStorage with:
 
 ```js
-// Before
-{ to: '/banlist', label: 'Banlist' },
-
-// After
-{ to: '/misc', label: 'Misc' },
+{
+  lists: [
+    {
+      id: 'wish-list',
+      name: 'Wish List',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [],
+    }
+  ]
+}
 ```
 
-**Side effects / notes:**
-- Both the desktop link row (line 83–88) and the mobile hamburger menu (line 148–157) render from `NAV_LINKS`, so both update automatically.
-- The `navLinkStyle` active indicator will highlight `Misc` when the user is on `/misc`. It will NOT highlight when on `/banlist` — intentional, since `/banlist` is now a sub-destination reached via the landing page.
-- No other changes to NavBar.jsx.
+`'wish-list'` is the permanent default list. `deleteList` is a no-op when `id === 'wish-list'`.
 
 ---
 
-## File 2 — `client/src/pages/MiscPage.jsx` (new file)
+## UUID generation
 
-**Route:** `/misc`
+Use `crypto.randomUUID()`. Available in all modern browsers — no import, no library.
 
-**Imports needed:**
-- `useNavigate` from `react-router-dom`
+---
 
-**Top-level constant** (defined above the component, not inside JSX):
+## Hook: `useLists()`
+
+### Internal state
 
 ```js
-const TOOLS = [
-  {
-    name: 'Banlist',
-    description: 'TCG Forbidden, Limited, and Semi-Limited card list.',
-    route: '/banlist',
-  },
-]
+const [lists, setLists] = useState(() => loadFromStorage())
 ```
 
-**Component structure:**
+`loadFromStorage()` reads `localStorage.getItem('ygo-lists')`, JSON-parses it, returns `parsed.lists`. On any error (missing key, bad JSON), it returns the seeded default array and writes it back to localStorage before returning.
 
-```
-<div>                        outer wrapper — maxWidth 860px, margin 0 auto,
-  <h1>                         padding var(--section-pad)
-    'Reference Tools'          Cinzel, 28px
-  </h1>
-  <p>                          subtitle
-    'Competitive and ...'      DM Sans (var(--font-body)), 14px,
-  </p>                         color var(--text-secondary), marginBottom 32px
+All mutating operations follow the same pattern:
+1. Compute the next state from the current state.
+2. Call `setLists(next)` for reactivity.
+3. Write `JSON.stringify({ lists: next })` to `localStorage.setItem('ygo-lists', ...)` atomically in the same call — no async gap.
 
-  {TOOLS.map(tool => (
-    <div                       tool row
-      onClick={() => navigate(tool.route)}
-      onMouseEnter             sets hovered state → background var(--bg-surface)
-      onMouseLeave             clears hovered state → background transparent
-      style={rowStyle}         flex row, justifyContent space-between,
-    >                          alignItems center, padding 16px 0,
-      <div>                    borderBottom 0.5px solid var(--border),
-        <div>{tool.name}</div>   cursor pointer
-        <div>{tool.description}</div>
-      </div>
-      <span>→</span>
-    </div>
-  ))}
-</div>
-```
+### Exported API
 
-**Hover state:** one `useState(null)` (or a string key) to track which row is hovered, so the background token can be applied conditionally. This is the only `useState` in the file — it is UI interaction state, not filter state, so `useState` is correct here (no URL param needed).
+| Name | Signature | Behavior |
+|---|---|---|
+| `lists` | `List[]` | Full array, live. |
+| `getList` | `(id) → List \| undefined` | `lists.find(l => l.id === id)` |
+| `createList` | `(name) → List` | Appends new list with `crypto.randomUUID()` id, returns it. |
+| `deleteList` | `(id) → void` | No-op if `id === 'wish-list'`. Otherwise filters out the list. |
+| `renameList` | `(id, name) → void` | Updates `name` and `updatedAt` on the matching list. |
+| `addItem` | `(listId, item) → void` | Appends item with new `itemId` via `crypto.randomUUID()`. Updates list `updatedAt`. |
+| `removeItem` | `(listId, itemId) → void` | Filters item out of the list. Updates list `updatedAt`. |
+| `updateItem` | `(listId, itemId, changes) → void` | Shallow-merges `changes` onto the matching item. Updates list `updatedAt`. |
 
-**Style values:**
-| Element | Key styles |
-|---|---|
-| Outer wrapper | `maxWidth: 860px`, `margin: '0 auto'`, `padding: 'var(--section-pad)'` |
-| `<h1>` | `fontFamily: 'var(--font-display)'`, `fontSize: 28px`, `color: 'var(--text-primary)'`, `marginBottom: 8px` |
-| Subtitle `<p>` | `fontFamily: 'var(--font-body)'`, `fontSize: 14px`, `color: 'var(--text-secondary)'`, `marginBottom: 32px`, `marginTop: 0` |
-| Tool row | `display: 'flex'`, `justifyContent: 'space-between'`, `alignItems: 'center'`, `padding: '16px 0'`, `borderBottom: '0.5px solid var(--border)'`, `cursor: 'pointer'`, `background: hovered ? 'var(--bg-surface)' : 'transparent'` |
-| Tool name | `fontFamily: 'var(--font-display)'`, `fontSize: 16px`, `color: 'var(--text-primary)'`, `marginBottom: 4px` |
-| Tool description | `fontFamily: 'var(--font-body)'`, `fontSize: 13px`, `color: 'var(--text-secondary)'` |
-| Arrow | `fontSize: 18px`, `color: 'var(--text-secondary)'`, `flexShrink: 0` |
-
-**Constraint check:** No hex values — all colors are CSS custom properties.
+`addItem` receives everything except `itemId` — the hook generates it internally before writing.
 
 ---
 
-## File 3 — `client/src/App.jsx`
+## Exported constants and helpers
 
-**Changes:**
-1. Add import: `import MiscPage from './pages/MiscPage'`
-2. Add route before the `*` catch-all, alongside the other section routes:
+These are module-level exports alongside the hook, not inside it.
 
-```jsx
-<Route path="/misc" element={<MiscPage />} />
+### `CONDITION_MULTIPLIERS`
+
+```js
+export const CONDITION_MULTIPLIERS = {
+  NM:  1.00,
+  LP:  0.85,
+  MP:  0.70,
+  HP:  0.50,
+  DMG: 0.25,
+}
 ```
 
-**Placement:** After the `/banlist` route (line 24), before `<Route path="*" ...>` (line 25). The `/banlist` route itself is unchanged.
+### `calcItemPrice(item)`
+
+```js
+export function calcItemPrice(item) {
+  return parseFloat(item.setPrice || 0)
+    * CONDITION_MULTIPLIERS[item.condition]
+    * item.quantity
+}
+```
+
+Returns a `number`. Callers use `.toFixed(2)` for display.
+
+### `calcListTotal(list)`
+
+```js
+export function calcListTotal(list) {
+  return list.items.reduce((sum, item) => sum + calcItemPrice(item), 0)
+}
+```
+
+Returns a `number`.
 
 ---
 
-## What does NOT change
+## File location
 
-| File | Reason |
-|---|---|
-| `client/src/pages/BanlistPage.jsx` | Untouched — still directly accessible via `/banlist` |
-| `server/` files | No new API routes needed |
-| `tokens.css` | All tokens used by MiscPage already exist |
-| Any other component | No shared state or props affected |
+```
+client/src/hooks/useLists.js
+```
+
+Follows the same pattern as the existing hooks (`useCards.js`, `useCardDetail.js`): named export of the hook, with any co-located helpers exported alongside it.
 
 ---
 
-## Execution order
+## Out of scope for this slice
 
-1. Create `MiscPage.jsx`
-2. Update `NavBar.jsx` (one-line swap in `NAV_LINKS`)
-3. Update `App.jsx` (one import + one route line)
+- No UI components.
+- No server routes.
+- No TanStack Query — this is localStorage-only, no async data fetching.
+- No third-party UUID library.

@@ -10,60 +10,46 @@ export default function SetDetailPage() {
 
   const { data, isLoading, isError } = useSetCards(decodedName)
 
-  // Pull set metadata from the already-cached sets list — no extra fetch
-  const queryClient = useQueryClient()
-  const setsMeta    = queryClient.getQueryData(['sets'])
-  const meta        = setsMeta?.find(s => s.set_name === decodedName)
+  const setsCache = useQueryClient().getQueryData(['sets'])
+  const meta      = setsCache?.find(s => s.set_name === decodedName) ?? null
 
-  if (isError) {
-    return (
-      <div style={{ padding: 'var(--section-pad)' }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ marginBottom: '1.5rem', fontFamily: 'var(--font-body)', cursor: 'pointer' }}
-        >
-          ← Back
-        </button>
-        <p style={{ fontFamily: 'var(--font-body)', color: 'var(--red)' }}>Failed to load set.</p>
-      </div>
-    )
-  }
+  const setCode    = meta?.set_code ?? '—'
+  const numOfCards = meta?.num_of_cards != null ? `${meta.num_of_cards} cards` : '—'
+  const tcgDate    = meta?.tcg_date ?? '—'
 
   return (
     <div style={{ padding: 'var(--section-pad)' }}>
       <button
         onClick={() => navigate(-1)}
-        style={{ marginBottom: '1.5rem', fontFamily: 'var(--font-body)', cursor: 'pointer' }}
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: '13px',
+          color: 'var(--text-secondary)',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          marginBottom: '1.5rem',
+          padding: 0,
+        }}
       >
         ← Back
       </button>
 
-      <h1 style={{
-        fontFamily: 'var(--font-display)',
-        fontSize: '28px',
-        fontWeight: 600,
-        color: 'var(--text-primary)',
-        marginBottom: '6px',
-      }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', marginBottom: '4px' }}>
         {decodedName}
       </h1>
 
-      {meta && (
-        <p style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '13px',
-          color: 'var(--text-secondary)',
-          marginBottom: '24px',
-        }}>
-          {meta.set_code} · {meta.num_of_cards} cards · {meta.tcg_date ?? '—'}
-        </p>
-      )}
+      <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+        {setCode} · {numOfCards} · {tcgDate}
+      </p>
 
-      <CardGrid
-        cards={data?.cards}
-        isLoading={isLoading}
-        isError={false}
-      />
+      {isError ? (
+        <p style={{ color: 'var(--red)', fontFamily: 'var(--font-body)' }}>
+          Failed to load set.
+        </p>
+      ) : (
+        <CardGrid cards={data?.cards} isLoading={isLoading} />
+      )}
     </div>
   )
 }

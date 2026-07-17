@@ -3,6 +3,7 @@ import NavBar from './components/layout/NavBar'
 import BrowsePage from './pages/BrowsePage'
 import CardDetailPage from './pages/CardDetailPage'
 import SetsPage from './pages/SetsPage'
+import SetDetailPage from './pages/SetDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/browse" element={<BrowsePage />} />
         <Route path="/card/:id" element={<CardDetailPage />} />
         <Route path="/sets" element={<SetsPage />} />
+        <Route path="/sets/:setName" element={<SetDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </div>

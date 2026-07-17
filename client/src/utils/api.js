@@ -32,3 +32,15 @@ export async function fetchCardsBySet(setName) {
   if (!res.ok) throw new Error('Failed to fetch set cards')
   return res.json()
 }
+
+export async function fetchArchetypes() {
+  const res = await fetch(`${BASE}/archetypes`)
+  if (!res.ok) throw new Error('Failed to fetch archetypes')
+  return res.json()
+}
+
+export async function fetchCardsByArchetype(name) {
+  const res = await fetch(`${BASE}/archetypes/${encodeURIComponent(name)}`)
+  if (!res.ok) throw new Error('Failed to fetch archetype cards')
+  return res.json()
+}

@@ -4,6 +4,8 @@ import BrowsePage from './pages/BrowsePage'
 import CardDetailPage from './pages/CardDetailPage'
 import SetsPage from './pages/SetsPage'
 import SetDetailPage from './pages/SetDetailPage'
+import ArchetypesPage from './pages/ArchetypesPage'
+import ArchetypeDetailPage from './pages/ArchetypeDetailPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/card/:id" element={<CardDetailPage />} />
         <Route path="/sets" element={<SetsPage />} />
         <Route path="/sets/:setName" element={<SetDetailPage />} />
+        <Route path="/archetypes" element={<ArchetypesPage />} />
+        <Route path="/archetypes/:name" element={<ArchetypeDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </div>

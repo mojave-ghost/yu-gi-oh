@@ -1,133 +1,73 @@
-# YGO Card Database
+Read client/src/pages/CardDetailPage.jsx in full, then fix 
+the following two issues. Do not change anything else.
 
-Returning TCG players who want to browse cards and check prices.
-Full docs: `docs/design-doc.md` · `docs/react-scaffold.md`
+## Fix 1 — Sort dropdown
 
----
+set_price_low does not exist on card_sets objects. The API only 
+returns set_price. Update sortSets to use set_price for all 
+price-based sorting and remove the listed/unlisted split 
+entirely — it was based on a field that doesn't exist.
 
-## Stack
+Replace the sortSets function with:
 
-| Layer | Tool |
-|---|---|
-| Frontend | React 18 + Vite |
-| Routing | React Router v6 |
-| Server state | TanStack Query (`@tanstack/react-query`) |
-| Debounce | `use-debounce` |
-| Backend | Node + Express |
-| Cache | `node-cache` (1hr TTL) |
-| Styling | CSS custom properties + inline styles |
+function sortSets(sets, key) {
+  switch (key) {
+    case 'high':
+      return [...sets].sort((a, b) => 
+        parseFloat(b.set_price || 0) - parseFloat(a.set_price || 0))
+    case 'low':
+      return [...sets].sort((a, b) => 
+        parseFloat(a.set_price || 0) - parseFloat(b.set_price || 0))
+    case 'best':
+      return [...sets].sort((a, b) => {
+        const pa = parseFloat(a.set_price || 0)
+        const pb = parseFloat(b.set_price || 0)
+        if (pa === 0 && pb === 0) return 0
+        if (pa === 0) return 1
+        if (pb === 0) return -1
+        return pa - pb
+      })
+    case 'alpha':
+      return [...sets].sort((a, b) => 
+        a.set_name.localeCompare(b.set_name))
+    default:
+      return [...sets]
+  }
+}
 
----
+'best' sorts by lowest price with $0.00 (unlisted) cards at the 
+bottom. 'low' includes $0.00 cards at the top — that is correct 
+for Price: Low to High since they are technically the lowest price.
 
-## Hard rules — never break these
+Also remove the price block's 'from $X.XX' line entirely since 
+set_price_low does not exist. Replace the price block with:
 
-- **No hex values in components.** All colors come from CSS custom properties defined in `client/src/styles/tokens.css`. If a color isn't in tokens.css, add it there first.
-- **Filter state lives in URL search params.** Use `useSearchParams` from React Router. No `useState` for filters. This keeps filters shareable and survives refresh.
-- **All API calls go through the Node proxy.** Fetch from `/api/*` only. Never call `ygoprodeck.com` directly from the client — CORS will block it.
-- **Card type → color mapping lives only in `utils/cardTypeColors.js`.** No inline color logic for card types anywhere else.
-- **Images always get `loading="lazy" decoding="async"`.** Grid uses `cards_small/{id}.jpg`. Detail page uses `cards/{id}.jpg`.
-- **Search input debounced at 300ms minimum.** Use `useDebouncedCallback` from `use-debounce`.
-- **`keepPreviousData` on all paginated queries.** Prevents grid flash between pages.
+<div style={{ flexShrink: 0, textAlign: 'right' }}>
+  <p style={{ fontSize: '12px', color: 'var(--gold)', 
+    fontWeight: 500, margin: 0 }}>
+    {parseFloat(s.set_price) > 0 
+      ? '$' + parseFloat(s.set_price).toFixed(2) 
+      : '—'}
+  </p>
+</div>
 
----
+## Fix 2 — Show less key collision
 
-## Project structure
+The composite key uses set_rarity_code which is empty string '' 
+for many newer rarities, causing duplicate keys when multiple 
+rows share the same set_code and empty rarity code.
 
-```
-ygo-database/
-├── CLAUDE.md
-├── docs/
-│   ├── design-doc.md
-│   └── react-scaffold.md
-├── client/                        # Vite + React
-│   ├── index.html                 # Add Google Fonts link here
-│   └── src/
-│       ├── main.jsx               # QueryClient + BrowserRouter setup
-│       ├── App.jsx                # Route definitions
-│       ├── styles/
-│       │   └── tokens.css         # Single source of truth for all tokens
-│       ├── pages/
-│       │   ├── BrowsePage.jsx
-│       │   ├── CardDetailPage.jsx
-│       │   └── NotFoundPage.jsx
-│       ├── components/
-│       │   ├── layout/NavBar.jsx
-│       │   ├── cards/
-│       │   │   ├── CardGrid.jsx
-│       │   │   ├── CardTile.jsx
-│       │   │   └── CardTypeBadge.jsx
-│       │   ├── filters/
-│       │   │   ├── FilterSidebar.jsx
-│       │   │   ├── TypeFilter.jsx
-│       │   │   ├── AttributeFilter.jsx
-│       │   │   └── LevelRangeFilter.jsx
-│       │   ├── search/SearchBar.jsx
-│       │   ├── sort/SortControl.jsx
-│       │   └── pagination/Pagination.jsx
-│       ├── hooks/
-│       │   ├── useCards.js
-│       │   └── useCardDetail.js
-│       └── utils/
-│           ├── cardTypeColors.js
-│           └── api.js
-└── server/
-    ├── index.js
-    └── routes/cards.js
-```
+Replace the key with a stable index-based composite:
 
----
+key={`${s.set_code}-${s.set_rarity}-${index}`}
 
-## Design tokens (summary)
+Update the map to pass index:
+visibleSets.map((s, index) => { ... })
 
-Full token list is in `client/src/styles/tokens.css`.
+Using set_rarity (the full string like "Quarter Century Secret 
+Rare") instead of set_rarity_code (the short code which can be 
+empty) makes the key more unique. Adding index as a final 
+tiebreaker ensures no two rows ever share a key even if all 
+other fields are identical.
 
-**UI shell:** `--bg-page #fafafa` · `--bg-surface #f0f0f0` · `--border #e0e0e0` · `--text-primary #1c1c1c` · `--text-secondary #6b6b6b` · `--navy #1a3a5c` · `--nav-text #E8D8A0` · `--cyan #4DB8D4` · `--gold #C9A84C`
-
-**Card type stripes + badges:** Each type has three tokens: `-bg` (stripe color), `-light` (badge fill), `-text` (badge text). Types: `normal` `effect` `spell` `trap` `fusion` `synchro` `xyz` `link` `ritual`.
-
-**`--gold` is only for price display.** Not for decoration.
-
----
-
-## Typography
-
-- **Display / card names:** `font-family: 'Cinzel', serif` — weights 400 and 600 only
-- **Everything else:** `font-family: 'DM Sans', sans-serif` — weights 400 and 500 only
-- Load both from Google Fonts in `client/index.html`
-
----
-
-## API proxy routes (server)
-
-| Route | Upstream | Notes |
-|---|---|---|
-| `GET /api/cards` | `cardinfo.php` | Accepts `q, type, attribute, levelMin, levelMax, sort, page`. Server paginates (24/page). |
-| `GET /api/cards/random` | `randomcard.php` | Used by NavBar random button |
-| `GET /api/cards/:id` | `cardinfo.php?id=` | Full card + prices |
-
-Cache all upstream responses with `node-cache` at 1hr TTL. Key = serialized query params.
-
----
-
-## Routes (client)
-
-| Path | Component | Notes |
-|---|---|---|
-| `/` | redirect → `/browse` | |
-| `/browse` | `BrowsePage` | Filter state in URL params |
-| `/card/:id` | `CardDetailPage` | `navigate(-1)` for back button |
-| `*` | `NotFoundPage` | |
-
----
-
-## MVP scope — build only this
-
-1. `tokens.css` + `cardTypeColors.js`
-2. Node server + `/api/cards` proxy + cache
-3. `NavBar` + `SearchBar`
-4. `useCards` hook + `CardGrid` + `CardTile` + `CardTypeBadge`
-5. `FilterSidebar` (TypeFilter → AttributeFilter → LevelRangeFilter)
-6. `Pagination` + `SortControl`
-7. `CardDetailPage` + `useCardDetail`
-
-**Post-MVP (do not build yet):** banlist badges, favorites, archetype stats, deck builder.
+Do not change anything else.

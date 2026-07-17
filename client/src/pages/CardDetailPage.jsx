@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useCardDetail } from '../hooks/useCardDetail'
 import CardTypeBadge from '../components/cards/CardTypeBadge'
@@ -9,9 +9,14 @@ export default function CardDetailPage() {
   const { data: card, isLoading, isError } = useCardDetail(id)
   const [sortKey, setSortKey] = useState('best')
   const [showAll, setShowAll] = useState(false)
+  const [artIndex, setArtIndex] = useState(0)
+
+  useEffect(() => { setArtIndex(0) }, [id])
 
   if (isLoading) return <p style={{ padding: 'var(--section-pad)', fontFamily: 'var(--font-body)' }}>Loading…</p>
   if (isError)   return <p style={{ padding: 'var(--section-pad)', color: 'var(--red)' }}>Card not found.</p>
+
+  console.log('card_images:', card.card_images, 'length:', card.card_images?.length)
 
   function getRarityStyle(code) {
     switch (code) {
@@ -86,13 +91,47 @@ export default function CardDetailPage() {
         ← Back
       </button>
 
-      <img
-        src={card.card_images?.[0]?.image_url}
-        alt={card.name}
-        style={{ display: 'block', margin: '0 auto 1.5rem', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-md)' }}
-        loading="lazy"
-        decoding="async"
-      />
+      {card.card_images?.length > 1 ? (
+        <div>
+          <p style={{ fontSize: '11px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)', margin: '0 0 8px 0' }}>
+            Alternate Art
+          </p>
+          <img
+            src={card.card_images[artIndex].image_url}
+            alt={`${card.name} art ${artIndex + 1}`}
+            style={{ display: 'block', margin: '0 auto', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-md)' }}
+            loading="lazy"
+            decoding="async"
+          />
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '10px', marginBottom: '1.5rem' }}>
+            <button
+              onClick={() => setArtIndex(i => i - 1)}
+              disabled={artIndex === 0}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--text-primary)', padding: '0 8px', opacity: artIndex === 0 ? 0.4 : 1 }}
+            >
+              ←
+            </button>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+              {artIndex + 1} of {card.card_images.length}
+            </span>
+            <button
+              onClick={() => setArtIndex(i => i + 1)}
+              disabled={artIndex === card.card_images.length - 1}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--text-primary)', padding: '0 8px', opacity: artIndex === card.card_images.length - 1 ? 0.4 : 1 }}
+            >
+              →
+            </button>
+          </div>
+        </div>
+      ) : (
+        <img
+          src={card.card_images?.[0]?.image_url}
+          alt={card.name}
+          style={{ display: 'block', margin: '0 auto 1.5rem', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-md)' }}
+          loading="lazy"
+          decoding="async"
+        />
+      )}
 
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', marginBottom: '10px' }}>
         {card.name}

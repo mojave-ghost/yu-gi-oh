@@ -1,472 +1,457 @@
-# Slice C — List Detail Page
+# Slice D — Add to List Modal
 
-## Overview
-
-Two files change:
-- **NEW** `client/src/pages/ListDetailPage.jsx`
-- **EDIT** `client/src/App.jsx` — one import + one route
+**Only file changed:** `client/src/pages/CardDetailPage.jsx`
 
 ---
 
-## Dependency check
+## 1. Imports
 
-`@tabler/icons-react` is **not** in `client/package.json`. The pencil edit hint requires it.
-Install before writing the component:
+Add two named imports at the top of the file:
 
+```js
+import { useLists, CONDITION_MULTIPLIERS } from '../hooks/useLists'
 ```
-cd client && npm install @tabler/icons-react
-```
 
-Use `IconPencil` from `@tabler/icons-react` with `size={14}`.
+`CONDITION_MULTIPLIERS` is already exported from `useLists.js` (line 5). No new files needed.
 
 ---
 
-## `client/src/pages/ListDetailPage.jsx`
+## 2. Hook call
 
-### Imports
-
-```js
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { IconPencil } from '@tabler/icons-react'
-import { useLists, calcItemPrice, calcListTotal, CONDITION_MULTIPLIERS } from '../hooks/useLists'
-import { getRarityStyle } from '../utils/rarityStyles'
-```
-
-### State
-
-| Variable | Type | Purpose |
-|---|---|---|
-| `editing` | boolean | inline name-input active |
-| `draftName` | string | controlled value for rename input |
-| `confirmDelete` | boolean | delete confirmation row visible |
-| `nameHovered` | boolean | shows pencil icon (all inline styles — no CSS hover class) |
-
-### Top-level wiring
+Inside the component body, below the existing `useState` calls, add:
 
 ```js
-const { listId } = useParams()
-const navigate = useNavigate()
-const { getList, renameList, deleteList, removeItem, updateItem } = useLists()
-const list = getList(listId)
+const { lists, createList, addItem } = useLists()
 ```
 
-### Invalid ID guard
-
-Rendered **before** anything else. If `list` is `undefined`, return early:
-
-```jsx
-<div style={{ padding: 'var(--section-pad)' }}>
-  <p style={{ fontFamily: 'var(--font-body)', color: 'var(--red)' }}>List not found.</p>
-  <button onClick={() => navigate('/lists')} style={backBtnStyle}>← My Lists</button>
-</div>
-```
-
-Nothing below renders.
+Only destructure what the modal needs. `getList` is not required — derive the selected list inline from `lists.find(l => l.id === selectedListId)`.
 
 ---
 
-## Page structure (happy path)
+## 3. New state variables
 
-All content in `<main style={{ padding: 'var(--section-pad)', maxWidth: 900, margin: '0 auto' }}>`.
+Add after the existing `useState` declarations (lines 11–13):
 
-### 1. Back button
+| Variable | Type | Default | Purpose |
+|---|---|---|---|
+| `modalOpen` | boolean | `false` | Controls modal visibility |
+| `selectedListId` | string | `'wish-list'` | Which list is selected in the List dropdown |
+| `showNewListInput` | boolean | `false` | Show inline text input for new list name |
+| `newListName` | string | `''` | Controlled value for the new list name input |
+| `selectedSetIndex` | number | `0` | Index into `modalSets` (cheapest-first sorted) |
+| `condition` | string | `'NM'` | Selected condition |
+| `quantity` | number | `1` | Selected quantity |
+| `toastVisible` | boolean | `false` | Controls toast display |
+| `toastMessage` | string | `''` | Toast text |
 
-Pattern matches `CardDetailPage` and `SetDetailPage` exactly:
+---
 
-```js
-const backBtnStyle = {
-  fontFamily: 'var(--font-body)',
-  fontSize: '13px',
-  color: 'var(--text-secondary)',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  marginBottom: '1.5rem',
-  padding: 0,
-}
-```
-
-```jsx
-<button onClick={() => navigate('/lists')} style={backBtnStyle}>← My Lists</button>
-```
-
-### 2. Header row
-
-```jsx
-<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-  {/* left: editable name — or plain h1 for wish-list */}
-  {/* right: delete button — omitted when listId === 'wish-list' */}
-</div>
-```
-
-#### Editable list name (left side)
-
-**Wish List guard:** when `listId === 'wish-list'`, render a plain `<h1>` — no click handler, no pencil, no hover state:
-
-```jsx
-<h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', margin: 0 }}>
-  {list.name}
-</h1>
-```
-
-**All other lists — display mode** (`!editing`):
-
-```jsx
-<div
-  onMouseEnter={() => setNameHovered(true)}
-  onMouseLeave={() => setNameHovered(false)}
-  onClick={() => { setDraftName(list.name); setEditing(true) }}
-  style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'text' }}
->
-  <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', margin: 0 }}>
-    {list.name}
-  </h1>
-  <span style={{
-    opacity: nameHovered ? 1 : 0,
-    color: 'var(--text-secondary)',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'opacity 0.15s',
-  }}>
-    <IconPencil size={14} />
-  </span>
-</div>
-```
-
-**Edit mode** (`editing`):
-
-```jsx
-<input
-  autoFocus
-  value={draftName}
-  onChange={e => setDraftName(e.target.value)}
-  onBlur={handleRename}
-  onKeyDown={e => {
-    if (e.key === 'Enter') handleRename()
-    if (e.key === 'Escape') setEditing(false)
-  }}
-  style={{
-    fontFamily: 'var(--font-display)',
-    fontSize: '28px',
-    border: 'none',
-    borderBottom: '1.5px solid var(--navy)',
-    outline: 'none',
-    background: 'transparent',
-    color: 'var(--text-primary)',
-    padding: '0 2px',
-    width: '100%',
-    maxWidth: '480px',
-  }}
-/>
-```
-
-**`handleRename`:**
+## 4. Derived values (inside component, before return)
 
 ```js
-function handleRename() {
-  if (draftName.trim()) renameList(listId, draftName.trim())
-  setEditing(false)
-}
+// Reuse existing sortSets helper — 'best' puts cheapest first, $0.00 at bottom
+const modalSets = card.card_sets ? sortSets(card.card_sets, 'best') : []
+
+const selectedSet   = modalSets[selectedSetIndex]
+const selectedList  = lists.find(l => l.id === selectedListId)
+const estimatedCost = parseFloat(selectedSet?.set_price || 0)
+                      * CONDITION_MULTIPLIERS[condition]
+                      * quantity
 ```
 
-Empty value → `setEditing(false)` without calling `renameList`.
+These update reactively as state changes — no `useMemo` needed at this scale.
 
-#### Delete button (right side, omitted when `listId === 'wish-list'`)
+---
 
-**Normal state** (`!confirmDelete`):
+## 5. Button insertion point
+
+Insert immediately after the closing `</p>` of the TCGPlayer price block (currently line 140) and before the `{card.card_sets && (` block (line 142):
 
 ```jsx
 <button
-  onClick={() => setConfirmDelete(true)}
+  onClick={() => setModalOpen(true)}
   style={{
+    width: '100%',
+    padding: '10px',
     fontFamily: 'var(--font-body)',
-    fontSize: '13px',
-    color: 'var(--red)',
-    background: 'none',
-    border: '0.5px solid var(--red)',
+    fontSize: '14px',
+    fontWeight: 500,
     borderRadius: 'var(--radius-md)',
-    padding: '6px 12px',
+    border: 'none',
+    background: 'var(--navy)',
+    color: 'var(--nav-text)',
     cursor: 'pointer',
+    marginTop: '16px',
+    marginBottom: '16px',
   }}
 >
-  Delete list
+  Add to list
 </button>
 ```
 
-**Confirmation state** (`confirmDelete`): replace the button with an inline flex row:
-
-```jsx
-<div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-  <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)' }}>
-    Delete "{list.name}"? This cannot be undone.
-  </span>
-  <button onClick={() => setConfirmDelete(false)} style={cancelBtnStyle}>Cancel</button>
-  <button onClick={handleDelete} style={deleteBtnStyle}>Delete</button>
-</div>
-```
-
-Button styles (define as module-level consts above the component):
-
-```js
-const cancelBtnStyle = {
-  fontFamily: 'var(--font-body)', fontSize: '13px',
-  background: 'none', border: '0.5px solid var(--border)',
-  borderRadius: 'var(--radius-md)', padding: '6px 12px', cursor: 'pointer',
-}
-const deleteBtnStyle = {
-  ...cancelBtnStyle,
-  color: 'var(--red)', border: '0.5px solid var(--red)',
-}
-```
-
-```js
-function handleDelete() {
-  deleteList(listId)
-  navigate('/lists')
-}
-```
-
-### 3. Running total bar
-
-Directly below the header row, before the table:
-
-```jsx
-<p style={{
-  fontFamily: 'var(--font-body)',
-  fontSize: '16px',
-  fontWeight: 500,
-  color: 'var(--gold)',
-  marginBottom: '24px',
-  marginTop: 0,
-}}>
-  Total estimated cost: ${calcListTotal(list).toFixed(2)}
-</p>
-```
-
-Updates live because `useLists` re-renders on every `updateItem` / `removeItem` call.
+The button renders unconditionally (even cards with no price can be added to a list).
 
 ---
 
-## Item table
+## 6. Modal (rendered inside the component's return, after the main `<div>`)
 
-Shown when `list.items.length > 0`.
+Render below the closing `</div>` of the page wrapper, as a sibling node in the fragment. Condition: `{modalOpen && ( … )}`.
 
-```jsx
-<table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-body)', fontSize: '13px' }}>
-  <thead>
-    <tr style={{ background: 'var(--navy)', color: 'var(--nav-text)' }}>
-      {['Card', 'Set & Rarity', 'Condition', 'Qty', 'Price', ''].map((h, i) => (
-        <th key={i} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 500 }}>{h}</th>
-      ))}
-    </tr>
-  </thead>
-  <tbody>
-    {list.items.map(item => /* item row */)}
-  </tbody>
-</table>
-```
-
-### Shared select style
-
-Used by both Condition and Qty columns — matches the SortControl / SetDetailPage pattern:
+### 6a. Overlay
 
 ```js
-const selectStyle = {
-  fontSize: '13px',
-  fontFamily: 'var(--font-body)',
-  background: 'var(--bg-surface)',
-  border: '0.5px solid var(--border)',
-  borderRadius: 'var(--radius-md)',
-  padding: '4px 8px',
-  color: 'var(--text-primary)',
-  cursor: 'pointer',
-}
+position: 'fixed', inset: 0,
+background: 'rgba(0,0,0,0.45)',
+display: 'flex', alignItems: 'center', justifyContent: 'center',
+zIndex: 100
 ```
 
-### Item row
+Click on overlay itself closes modal: `onClick={() => setModalOpen(false)}`. Stop propagation on the inner card: `onClick={e => e.stopPropagation()}`.
 
-`<tr key={item.itemId} style={{ borderBottom: '0.5px solid var(--border)' }}>` — six `<td>` cells.
+### 6b. Modal card
 
-**Card column** `<td style={{ padding: '10px 12px' }}>`
-
-```jsx
-<div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-  <img
-    src={item.cardImage}
-    alt={item.cardName}
-    width={36}
-    loading="lazy"
-    decoding="async"
-    style={{ borderRadius: '2px', display: 'block' }}
-  />
-  <span
-    onClick={() => navigate(`/card/${item.cardId}`)}
-    style={{ color: 'var(--text-primary)', fontWeight: 500, cursor: 'pointer' }}
-  >
-    {item.cardName}
-  </span>
-</div>
+```js
+background: 'var(--bg-page)',
+borderRadius: 'var(--radius-lg)',
+border: '0.5px solid var(--border)',
+padding: '24px',
+width: '480px',
+maxWidth: '92vw',
 ```
 
-**Set & Rarity column** `<td style={{ padding: '10px 12px' }}>`
+### 6c. Header row
 
+Flex row, `justifyContent: 'space-between'`, `alignItems: 'flex-start'`, `marginBottom: '16px'`.
+
+**Left side** — card context (flex row, `gap: '12px'`, `alignItems: 'center'`):
+- Thumbnail: `src={card.card_images?.[0]?.image_url_small}`, `width: '48px'`, `borderRadius: 'var(--radius-sm)'`, `loading="lazy"`, `decoding="async"`.
+- Card info column:
+  - Card name: `fontFamily: 'var(--font-display)'`, `fontSize: '15px'`, `color: 'var(--text-primary)'`, `margin: 0`.
+  - `<CardTypeBadge type={card.type} />` — already imported.
+
+**Right side** — close button:
 ```jsx
-<div>
-  {item.setUrl
-    ? <a href={item.setUrl} target="_blank" rel="noopener noreferrer"
-         style={{ fontSize: '12px', color: 'var(--text-primary)', textDecoration: 'none' }}>
-        {item.setName}
-      </a>
-    : <span style={{ fontSize: '12px' }}>{item.setName}</span>
-  }
-  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-    <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{item.setCode}</span>
-    {(() => {
-      const s = getRarityStyle(item.setRarityCode)
-      return (
-        <span style={{
-          background: s.bg, color: s.color,
-          fontSize: '10px', padding: '2px 5px',
-          borderRadius: 'var(--radius-sm)',
-        }}>
-          {s.label}
-        </span>
-      )
-    })()}
-  </div>
-</div>
-```
-
-**Condition column** `<td style={{ padding: '10px 12px' }}>`
-
-```jsx
-<select
-  value={item.condition}
-  onChange={e => updateItem(listId, item.itemId, { condition: e.target.value })}
-  style={selectStyle}
->
-  {Object.keys(CONDITION_MULTIPLIERS).map(c => <option key={c} value={c}>{c}</option>)}
-</select>
-```
-
-`Object.keys(CONDITION_MULTIPLIERS)` keeps options in sync with the hook's source of truth.
-Order in the hook: NM → LP → MP → HP → DMG.
-
-**Qty column** `<td style={{ padding: '10px 12px' }}>`
-
-```jsx
-<select
-  value={item.quantity}
-  onChange={e => updateItem(listId, item.itemId, { quantity: Number(e.target.value) })}
-  style={selectStyle}
->
-  {[1, 2, 3].map(n => <option key={n} value={n}>{n}</option>)}
-</select>
-```
-
-**Price column** `<td style={{ padding: '10px 12px' }}>`
-
-```jsx
-<div>
-  <div style={{ color: 'var(--gold)', fontWeight: 500 }}>
-    ${calcItemPrice(item).toFixed(2)}
-  </div>
-  <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
-    from ${parseFloat(item.setPrice || 0).toFixed(2)} ea
-  </div>
-</div>
-```
-
-**Remove column** `<td style={{ padding: '10px 12px' }}>`
-
-```jsx
-<button
-  onClick={() => removeItem(listId, item.itemId)}
-  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '16px', cursor: 'pointer', padding: 0 }}
->
+<button onClick={() => setModalOpen(false)} style={{
+  background: 'none', border: 'none', cursor: 'pointer',
+  fontSize: '20px', color: 'var(--text-secondary)',
+  lineHeight: 1, padding: 0,
+}}>
   ×
 </button>
 ```
 
----
+### 6d. Multiple-arts note
 
-## Empty list state
-
-Rendered instead of the table when `list.items.length === 0`:
+Immediately below the header row, condition `{card.card_images?.length > 1 && ( … )}`:
 
 ```jsx
 <p style={{
-  fontFamily: 'var(--font-body)',
-  fontSize: '14px',
-  color: 'var(--text-secondary)',
-  textAlign: 'center',
-  marginTop: '48px',
+  fontSize: '11px', color: 'var(--text-secondary)',
+  fontStyle: 'italic', marginBottom: '12px', marginTop: 0,
 }}>
-  No cards yet. Browse cards and add them to this list.
+  Multiple arts available — verify art on TCGPlayer.
 </p>
+```
+
+### 6e. Form fields
+
+All four fields use the same label pattern:
+
+```jsx
+<label style={{
+  fontSize: '12px', color: 'var(--text-secondary)',
+  marginBottom: '4px', display: 'block',
+}}>
+  {labelText}
+</label>
+<select style={{
+  width: '100%', height: '36px', padding: '0 10px',
+  fontFamily: 'var(--font-body)', fontSize: '13px',
+  border: '0.5px solid var(--border)',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)', marginBottom: '12px',
+}}>
+```
+
+**Field 1 — List:**
+
+Label: `'Add to list'`
+
+```jsx
+<select
+  value={showNewListInput ? '__create__' : selectedListId}
+  onChange={e => {
+    if (e.target.value === '__create__') {
+      setShowNewListInput(true)
+    } else {
+      setShowNewListInput(false)
+      setSelectedListId(e.target.value)
+    }
+  }}
+>
+  {lists.map(l => (
+    <option key={l.id} value={l.id}>{l.name}</option>
+  ))}
+  <option disabled>──────────</option>
+  <option value="__create__">+ Create new list</option>
+</select>
+```
+
+When `showNewListInput` is true, render an inline `<input>` below the select:
+
+```jsx
+{showNewListInput && (
+  <input
+    autoFocus
+    value={newListName}
+    onChange={e => setNewListName(e.target.value)}
+    onBlur={() => {
+      if (newListName.trim()) {
+        const created = createList(newListName.trim())
+        setSelectedListId(created.id)
+        setNewListName('')
+        setShowNewListInput(false)
+      }
+    }}
+    onKeyDown={e => {
+      if (e.key === 'Enter' && newListName.trim()) {
+        const created = createList(newListName.trim())
+        setSelectedListId(created.id)
+        setNewListName('')
+        setShowNewListInput(false)
+      }
+    }}
+    placeholder="List name…"
+    style={{
+      width: '100%', height: '36px', padding: '0 10px',
+      fontFamily: 'var(--font-body)', fontSize: '13px',
+      border: '0.5px solid var(--border)',
+      borderRadius: 'var(--radius-md)',
+      background: 'var(--bg-surface)',
+      color: 'var(--text-primary)',
+      marginBottom: '12px',
+      boxSizing: 'border-box',
+    }}
+  />
+)}
+```
+
+Note: `createList` returns the new list object (see `useLists.js` lines 62–71), so we can grab its `id` immediately.
+
+**Field 2 — Set & Printing:**
+
+Label: `'Set'`
+
+Options from `modalSets` (already sorted cheapest-first, $0.00 at bottom via reused `sortSets(card.card_sets, 'best')`). If `card.card_sets` is empty/undefined, render a single disabled placeholder option.
+
+```jsx
+<select
+  value={selectedSetIndex}
+  onChange={e => setSelectedSetIndex(Number(e.target.value))}
+  disabled={modalSets.length === 0}
+>
+  {modalSets.length === 0
+    ? <option>No printings listed</option>
+    : modalSets.map((s, i) => (
+        <option key={`${s.set_code}-${s.set_rarity}-${i}`} value={i}>
+          {s.set_name} · {s.set_rarity} · ${parseFloat(s.set_price || 0).toFixed(2)}
+        </option>
+      ))
+  }
+</select>
+```
+
+Default `selectedSetIndex` is `0` — the cheapest available printing.
+
+**Field 3 — Condition:**
+
+Label: `'Condition'`
+
+```jsx
+<select value={condition} onChange={e => setCondition(e.target.value)}>
+  <option value="NM">Near Mint</option>
+  <option value="LP">Lightly Played</option>
+  <option value="MP">Moderately Played</option>
+  <option value="HP">Heavily Played</option>
+  <option value="DMG">Damaged</option>
+</select>
+```
+
+**Field 4 — Quantity:**
+
+Label: `'Quantity'`
+
+```jsx
+<select value={quantity} onChange={e => setQuantity(Number(e.target.value))}>
+  <option value={1}>1</option>
+  <option value={2}>2</option>
+  <option value={3}>3</option>
+</select>
+```
+
+### 6f. Live price estimate
+
+Below the four fields, above the action buttons:
+
+```jsx
+<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+    Estimated cost
+  </span>
+  <span style={{ fontSize: '16px', color: 'var(--gold)', fontWeight: 500 }}>
+    ${estimatedCost.toFixed(2)}
+  </span>
+</div>
+```
+
+`estimatedCost` re-evaluates on every render as `selectedSetIndex`, `condition`, or `quantity` changes — no extra wiring needed.
+
+### 6g. Action buttons
+
+```jsx
+<div style={{
+  display: 'flex', gap: '8px',
+  justifyContent: 'flex-end', marginTop: '16px',
+}}>
+  <button
+    onClick={() => setModalOpen(false)}
+    style={{ /* ghost style — see below */ }}
+  >
+    Cancel
+  </button>
+  <button
+    onClick={handleAddToList}
+    style={{ /* navy style — see below */ }}
+  >
+    Add to list
+  </button>
+</div>
+```
+
+**Ghost style** (Cancel):
+```js
+background: 'none', border: '0.5px solid var(--border)',
+borderRadius: 'var(--radius-md)', padding: '8px 16px',
+fontFamily: 'var(--font-body)', fontSize: '13px',
+color: 'var(--text-secondary)', cursor: 'pointer',
+```
+
+**Navy style** (Add to list):
+```js
+background: 'var(--navy)', border: 'none',
+borderRadius: 'var(--radius-md)', padding: '8px 16px',
+fontFamily: 'var(--font-body)', fontSize: '13px',
+color: 'var(--nav-text)', cursor: 'pointer',
 ```
 
 ---
 
-## TCGPlayer disclaimer
+## 7. handleAddToList function
 
-Rendered **below the table** only when `list.items.length > 0`:
-
-```jsx
-<p style={{
-  fontFamily: 'var(--font-body)',
-  fontSize: '11px',
-  color: 'var(--text-secondary)',
-  fontStyle: 'italic',
-  marginTop: '8px',
-}}>
-  Prices are estimates. Final prices may vary on TCGPlayer.
-</p>
-```
-
----
-
-## `client/src/App.jsx` changes
-
-Add after the `ListsPage` import:
+Define inside the component body (before return):
 
 ```js
-import ListDetailPage from './pages/ListDetailPage'
+function handleAddToList() {
+  const list = lists.find(l => l.id === selectedListId)
+  const s    = modalSets[selectedSetIndex]
+
+  addItem(selectedListId, {
+    cardId:        card.id,
+    cardName:      card.name,
+    cardImage:     card.card_images?.[0]?.image_url_small,
+    cardType:      card.type,
+    setName:       s?.set_name ?? '',
+    setCode:       s?.set_code ?? '',
+    setRarity:     s?.set_rarity ?? '',
+    setRarityCode: s?.set_rarity_code ?? '',
+    setPrice:      s?.set_price ?? '0.00',
+    setUrl:        s?.set_url ?? null,
+    condition,
+    quantity,
+  })
+
+  setModalOpen(false)
+
+  const listName = list?.name ?? 'list'
+  setToastMessage(`Added to ${listName}`)
+  setToastVisible(true)
+  setTimeout(() => setToastVisible(false), 2000)
+}
 ```
 
-Add after the `/lists` route:
+---
+
+## 8. Toast
+
+Rendered as a sibling of the modal fragment, outside the page `<div>`:
 
 ```jsx
-<Route path="/lists/:listId" element={<ListDetailPage />} />
+{toastVisible && (
+  <div style={{
+    position: 'fixed', bottom: '24px',
+    left: '50%', transform: 'translateX(-50%)',
+    background: 'var(--navy)', color: 'var(--nav-text)',
+    padding: '10px 20px',
+    borderRadius: 'var(--radius-md)',
+    fontSize: '13px',
+    fontFamily: 'var(--font-body)',
+    zIndex: 200,
+    whiteSpace: 'nowrap',
+  }}>
+    {toastMessage}
+  </div>
+)}
 ```
 
-No other files change.
+`zIndex: 200` sits above the modal (`100`) so a toast triggered while the modal is closing remains visible.
 
 ---
 
-## Item shape reference
+## 9. Return structure after changes
 
-`addItem` callers (on `CardDetailPage`) must pass these fields. `ListDetailPage` is read-only with respect to item shape.
+```jsx
+return (
+  <>
+    <div style={{ maxWidth: '560px', … }}>
+      {/* … existing page content … */}
 
-| Field | Type | Source |
-|---|---|---|
-| `itemId` | string (UUID) | added by `useLists.addItem` |
-| `cardId` | number | `card.id` |
-| `cardName` | string | `card.name` |
-| `cardImage` | string | image URL |
-| `setName` | string | `set_entry.set_name` |
-| `setCode` | string | `set_entry.set_code` |
-| `setRarityCode` | string | `set_entry.set_rarity_code` |
-| `setUrl` | string \| undefined | TCGPlayer URL if available |
-| `setPrice` | string | `set_entry.set_price` |
-| `condition` | "NM"\|"LP"\|"MP"\|"HP"\|"DMG" | default "NM" at add time |
-| `quantity` | 1\|2\|3 | default 1 at add time |
+      {/* NEW: Add to list button (between price and sets) */}
+      <button onClick={() => setModalOpen(true)} … >Add to list</button>
+
+      {/* existing sets section */}
+      {card.card_sets && ( … )}
+    </div>
+
+    {/* NEW: Modal */}
+    {modalOpen && (
+      <div onClick={() => setModalOpen(false)} style={{ /* overlay */ }}>
+        <div onClick={e => e.stopPropagation()} style={{ /* card */ }}>
+          {/* header, note, fields, estimate, buttons */}
+        </div>
+      </div>
+    )}
+
+    {/* NEW: Toast */}
+    {toastVisible && (
+      <div style={{ /* toast */ }}>{toastMessage}</div>
+    )}
+  </>
+)
+```
+
+The existing return is a single `<div>` — wrap the whole return in `<>…</>` to accommodate the two new siblings.
 
 ---
 
-## Tokens used
+## 10. Checklist
 
-All already defined in `tokens.css`. No new tokens needed.
-
-`--red` · `--gold` · `--navy` · `--nav-text` · `--text-primary` · `--text-secondary` · `--bg-surface` · `--border` · `--font-display` · `--font-body` · `--radius-sm` · `--radius-md` · `--section-pad`
+- [ ] Add imports (`useLists`, `CONDITION_MULTIPLIERS`)
+- [ ] Call `useLists()`, destructure `lists`, `createList`, `addItem`
+- [ ] Add 9 state variables
+- [ ] Add derived values (`modalSets`, `selectedSet`, `selectedList`, `estimatedCost`)
+- [ ] Add `handleAddToList` function
+- [ ] Wrap existing return in fragment `<>…</>`
+- [ ] Insert "Add to list" button between price and sets
+- [ ] Render modal overlay + card with all sub-sections
+- [ ] Render toast
